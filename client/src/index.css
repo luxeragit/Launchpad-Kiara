@@ -1,0 +1,274 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LIGHT MODE - Black and Orange Theme */
+:root {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .08);
+  --background: 25 5% 96%;
+  --foreground: 20 10% 10%;
+  --border: 25 10% 85%;
+  --card: 25 5% 100%;
+  --card-foreground: 20 10% 10%;
+  --card-border: 25 10% 90%;
+  --sidebar: 25 10% 94%;
+  --sidebar-foreground: 20 10% 10%;
+  --sidebar-border: 25 10% 85%;
+  --sidebar-primary: 25 90% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 25 30% 88%;
+  --sidebar-accent-foreground: 20 20% 10%;
+  --sidebar-ring: 25 90% 50%;
+  --popover: 25 5% 99%;
+  --popover-foreground: 20 10% 10%;
+  --popover-border: 25 10% 88%;
+  --primary: 25 90% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 25 15% 90%;
+  --secondary-foreground: 20 20% 20%;
+  --muted: 25 10% 92%;
+  --muted-foreground: 20 10% 45%;
+  --accent: 25 25% 90%;
+  --accent-foreground: 20 20% 15%;
+  --destructive: 0 75% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 25 10% 80%;
+  --ring: 25 90% 50%;
+  --chart-1: 25 90% 50%;
+  --chart-2: 15 85% 55%;
+  --chart-3: 35 80% 48%;
+  --chart-4: 0 75% 50%;
+  --chart-5: 45 85% 55%;
+  --font-sans: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+  --font-serif: "JetBrains Mono", monospace;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+  --radius: .5rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 2px 4px -1px hsl(0 0% 0% / 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 4px 6px -1px hsl(0 0% 0% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 8px 10px -1px hsl(0 0% 0% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  /* Fallback for older browsers */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+/* DARK MODE - Black and Orange Theme */
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+  --background: 0 0% 5%;
+  --foreground: 30 10% 93%;
+  --border: 25 15% 16%;
+  --card: 0 0% 8%;
+  --card-foreground: 30 10% 93%;
+  --card-border: 25 15% 13%;
+  --sidebar: 0 0% 6%;
+  --sidebar-foreground: 30 10% 93%;
+  --sidebar-border: 25 15% 14%;
+  --sidebar-primary: 25 90% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 25 20% 13%;
+  --sidebar-accent-foreground: 30 10% 93%;
+  --sidebar-ring: 25 90% 50%;
+  --popover: 0 0% 9%;
+  --popover-foreground: 30 10% 93%;
+  --popover-border: 25 15% 15%;
+  --primary: 25 90% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 25 15% 14%;
+  --secondary-foreground: 30 10% 93%;
+  --muted: 25 10% 16%;
+  --muted-foreground: 25 10% 55%;
+  --accent: 25 20% 16%;
+  --accent-foreground: 30 10% 93%;
+  --destructive: 0 75% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 25 15% 20%;
+  --ring: 25 90% 50%;
+  --chart-1: 25 90% 55%;
+  --chart-2: 15 85% 58%;
+  --chart-3: 35 80% 50%;
+  --chart-4: 0 75% 55%;
+  --chart-5: 45 85% 58%;
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-mono;
+  }
+  
+  /* Force JetBrains Mono everywhere */
+  *, *::before, *::after {
+    font-family: var(--font-mono) !important;
+  }
+}
+
+/* Token price animations */
+.animate-pulse-green {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+.animate-pulse-red {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Custom scrollbar for crypto dashboard */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.7);
+}
+
+/* Elevation utilities */
+.hover-elevate {
+  @apply relative;
+}
+
+.hover-elevate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--elevate-1);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}
+
+.hover-elevate:hover::before {
+  opacity: 1;
+}
+
+.active-elevate-2 {
+  @apply relative;
+}
+
+.active-elevate-2::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--elevate-2);
+  opacity: 0;
+  transition: opacity 100ms ease;
+  pointer-events: none;
+}
+
+.active-elevate-2:active::after {
+  opacity: 1;
+}
+
+.toggle-elevate {
+  @apply relative;
+}
+
+.toggle-elevated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--elevate-2);
+  opacity: 1;
+  pointer-events: none;
+}
+
+.no-default-hover-elevate:hover::before {
+  opacity: 0 !important;
+}
+
+.no-default-active-elevate:active::after {
+  opacity: 0 !important;
+}
+
+/* Marquee animation for Featured section */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

@@ -1,0 +1,40 @@
+"Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]",
+  "Program log: Instruction: Buy",
+  "Program log: AnchorError caused by account: global_volume_accumulator. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.",
+  "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 13246 of 200000 compute units",
+  "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P failed: custom program error: 0xbc4"
+]. 
+Catch the `SendTransactionError` and call `getLogs()` on it for full details.
+[Orchestrator] Attempting Raydium buy
+[Raydium] Buying token qMqLnHAN1pwvrLVAyGgoLTGNZTcMJt2cxh99mE92MHS with 0.01 SOL (10000000 lamports)
+[Raydium] Executing swap: 10000000 of So11111111111111111111111111111111111111112 -> qMqLnHAN1pwvrLVAyGgoLTGNZTcMJt2cxh99mE92MHS
+[Raydium] Wallet: HBJ9qD7AXW4UNP6a7tiAz1EmMx7PT1zRggdnjwVsmRak
+[Orchestrator] Raydium buy failed: ROUTE_NOT_FOUND
+[Orchestrator] Attempting Jupiter buy (final fallback)
+[Jupiter] Getting quote for 0.01 SOL -> qMqLnHAN1pwvrLVAyGgoLTGNZTcMJt2cxh99mE92MHS
+[Jupiter] Error fetching quote: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async getJupiterQuote (/home/runner/workspace/server/jupiter-api.ts:62:22)
+    at async buyTokenOnJupiter (/home/runner/workspace/server/jupiter-api.ts:109:19)
+    at async orchestratedBuy (/home/runner/workspace/server/trade-orchestrator.ts:160:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1430:25) {
+  [cause]: Error: getaddrinfo ENOTFOUND quote-api.jup.ag
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:120:26) {
+    errno: -3007,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'quote-api.jup.ag'
+  }
+}
+[Orchestrator] Jupiter buy failed: Failed to get Jupiter quote - no liquidity found
+[Orchestrator] All buy attempts failed. Attempts: 3
+8:55:43 AM [express] POST /api/trade/buy 200 in 1058ms :: {"success":false,"error":"All platforms failed. Last error: Failed to get Jupiter quote - no liquidity found","attempts":[{"platform":"pumpfun","success":false,"error":"Simulation failed. \nMessage: Transaction simulation failed: Error processing Instruction 0: custom program error: 0xbc4. \nLogs: \n[\n  \"Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]\",\n  \"Program log: Instruction: Buy\",\n  \"Program log: AnchorError caused by account: global_volume_accumulator. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.\",\n  \"Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 13246 of 200000 compute units\",\n  \"Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P failed: custom program error: 0xbc4\"\n]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details."},{"platform":"raydium","success":false,"error":"ROUTE_NOT_FOUND"},{"platform":"jupiter","success":false,"error":"Failed to get Jupiter quote - no liquidity found"}]}
+[PumpFun] New token: boltdotnew (bolt.new)
+[PumpFun] New token: buy (need 5 sol to get off pls help)
+[PumpFun] New token: 47 (47Coin)
+[PumpFun] New token: SHIRO (Super Shiro)
+[PumpFun] New token: JOSE (Spanish Pepe)
+[PriceHistory] Returning cached data for qMqLnHAN1pwvrLVAyGgoLTGNZTcMJt2cxh99mE92MHS
+8:56:06 AM [express] GET /api/tokens/mint/qMqLnHAN1pwvrLVAyGgoLTGNZTcMJt2cxh99mE92MHS/price-history 304 in 19ms :: []
+[PumpFun] New token: Marcus (Marcus By Rainbowfish)

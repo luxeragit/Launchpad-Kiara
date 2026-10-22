@@ -1,0 +1,28 @@
+2content.js:1 Deprecation warning: tabReply will be removed
+(anonymous) @ content.js:1Understand this warning
+favicon.jpg:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+content.js:1 Deprecation warning: tabReply will be removed
+(anonymous) @ content.js:1Understand this warning
+injected.js:1 TronLink initiated
+tokens:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/trade/settings:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/monitoring/status:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+2026-01-03_16.36.50_1767443824559-DWOo-Vxz.jpg:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/wallets:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/auth/session:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/pumpfun/trending:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+holdings:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+index-BFxNfjg4.js:52 Session check failed: SyntaxError: Unexpected token 'I', "Internal S"... is not valid JSON
+(anonymous) @ index-BFxNfjg4.js:52Understand this error
+/api/pumpfun/movers:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+index-BFxNfjg4.js:52 Wallet address: HBJ9qD7AXW4UNP6a7tiAz1EmMx7PT1zRggdnjwVsmRak
+index-BFxNfjg4.js:52 Message: Sign this message to authenticate with Vexa Protocol.
+
+Nonce: 508823ff414b9e32e373371046b7620dfac1616f24e27fd512ce76931d2e1eb4
+index-BFxNfjg4.js:52 Message hash (first 16): abc38db39675e11b
+index-BFxNfjg4.js:52 Signature: 4r2ZZDZteLq9VixGNHPc1nJNejtuaH...
+/api/auth/verify:1  Failed to load resource: the server responded with a status of 401 ()Understand this error
+index-BFxNfjg4.js:52 Wallet connection error: Error: 401: {"error":"Invalid signature","debug":{"walletAddress":"HBJ9qD7AXW4UNP6a7tiAz1EmMx7PT1zRggdnjwVsmRak","storedNonce":"508823ff41...","messageLength":126,"signatureLength":88,"messageHash":"abc38db39675e11b","messagePreview":"Sign this message to authenticate with Vexa Protoc..."}}
+    at Nx (index-BFxNfjg4.js:8:96489)
+    at async zt (index-BFxNfjg4.js:8:96690)
+    at async p (index-BFxNfjg4.js:52:15403)
