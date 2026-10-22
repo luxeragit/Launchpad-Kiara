@@ -42,3 +42,45 @@ mtime_ms = 1792674467626
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7c1692a2-6cdd-4f8f-af51-e3162b40ed3b/0b36064b-87b6-4129-a853-e6e086f53e9b/f84eaed6-2413-4c4d-867a-bf5f23179694"
 storage_version_token = "1792675093702672"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "vq63-ikH4L4gaWUN8gFHY"
+uri = "file://generated-artifacts/terminal/implementation-report.html"
+type = "html"
+title = "KiaraFun — terminal reconstruction and verification"
+description = "Fresh before/after screenshots, all major desktop/mobile workspaces, preservation matrix, exact commits, test receipts and honest verification limits. Token Dashboard images are labelled isolated pending-record fixtures."
+logical_id = "38c64bc6-62cf-46e0-9fda-ea798bb4fea5"
+content_hash = "sha256:0c2f965a4eac96e8a0c7b4279783af7432d2ad373f55c0e6ac0b9d24369ba030"
+size = 1651414
+mtime_ms = 1792679089045
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7c1692a2-6cdd-4f8f-af51-e3162b40ed3b/38c64bc6-62cf-46e0-9fda-ea798bb4fea5/f4d72b8f-b9e4-413a-8992-87424fa44c71"
+storage_version_token = "1792679124344504"
+content_type = "text/html"
+
+[[outputs]]
+id = "Ne50Wx3x-0D_AOpt5dOAv"
+uri = "file://generated-artifacts/terminal/browser/explore-desktop-live.jpg"
+type = "image"
+title = "KiaraFun — rebuilt desktop terminal"
+description = "Actual 1440 × 900 browser capture: icon rail, compact toolbar/ticker and three independently scrolling panels using real market feeds."
+logical_id = "91cf4f49-5374-4400-9783-08102cbfaec4"
+content_hash = "sha256:a413db2863352f0e9add35671e37f020df01b59fcaae12a76e3eec9e9879d4fd"
+size = 155790
+mtime_ms = 1792678676081
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7c1692a2-6cdd-4f8f-af51-e3162b40ed3b/91cf4f49-5374-4400-9783-08102cbfaec4/b4606982-5942-45e8-9c56-a0a142c49d0d"
+storage_version_token = "1792679125645994"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "g5a8Yk6OWGmO-tPaNsAXS"
+uri = "file://generated-artifacts/terminal/final-create-mobile.jpg"
+type = "image"
+title = "KiaraFun — mobile launch workstation"
+description = "Actual 390 × 844 browser capture with compact toolbar, Configuration/Live review controls and all six mobile navigation destinations."
+logical_id = "f3e78458-7b58-4697-81af-4e2c7aa4a16a"
+content_hash = "sha256:41a238b5f299d83f790e8927491666c9ffff5a8f1c275c606404ebb7a5c96d28"
+size = 31554
+mtime_ms = 1792678250077
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7c1692a2-6cdd-4f8f-af51-e3162b40ed3b/f3e78458-7b58-4697-81af-4e2c7aa4a16a/f61876a7-18e3-4d72-8360-2212d15389ff"
+storage_version_token = "1792679126900839"
+content_type = "image/jpeg"
