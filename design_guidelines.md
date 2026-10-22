@@ -2,9 +2,9 @@
 
 ## Identity
 
-KiaraFun is an anime-inspired Solana trading playground, not a promotional
-landing page. Preserve a fast, information-dense product experience. All visible
-copy is concise English.
+KiaraFun is a dark-first, anime-branded Solana trading workstation, not a
+promotional landing page or conventional SaaS dashboard. All visible copy is
+concise English. The prior light-blue card-based presentation was rejected.
 
 The canonical character is the user-supplied blonde schoolgirl with bright blue
 eyes, a red ribbon, sailor uniform, and sky background. Use the original artwork,
@@ -13,12 +13,13 @@ Do not create new tokens, tickers, official social links, or financial products.
 
 ## Theme and typography
 
-- Light first: off-white canvas, white surfaces, sky-blue accents, navy text,
-  subtle blue-gray borders.
-- Dark mode: midnight/navy surfaces with readable blue accents; persist the
-  user's explicit theme choice.
-- Sora for headings and brand, DM Sans for interface copy, IBM Plex Mono for
-  addresses and financial figures. Use real font assets and tabular numerals.
+- Dark first: canvas `#0B0D12`, rail `#090A0E`, panels `#101218`/`#151820`,
+  dividers `#292D36`, text `#F1F3F7`, secondary text `#929AA9`.
+- Sky `#32A9FF` and ribbon coral `#FF5966` are microaccents. Market movement
+  uses green `#36D99A` and negative red `#F16978`.
+- Preserve optional light mode and persist explicit theme choice.
+- Geist for the interface, Space Grotesk for restrained branded headings,
+  IBM Plex Mono for addresses and tabular financial values. Load real fonts.
 - Coral is restrained branding or a clearly labeled danger signal, not arbitrary
   decoration. No neon borders, excessive gradients, oversized blank heroes,
   decorative charts, stock anime art, or emoji.
@@ -27,9 +28,12 @@ Do not create new tokens, tickers, official social links, or financial products.
 
 Keep Explore, Create, My Tokens, Wallets, and Monitor easy to reach.
 Keep `/`, `/deploy`, `/deploy/:id`, `/wallets`, and `/docs` working.
-Use compact desktop navigation and usable mobile navigation. Avoid permanent
-oversized sidebars and stacked navigation bars. Forms, dialogs, token details,
-tables, and financial controls must remain usable at 375px width.
+Use a fixed 52–56px icon rail, a 48–52px toolbar, and a 30–34px genuine market
+ticker. Desktop content fills the remaining viewport; adjacent panels scroll
+independently. Mobile uses one active panel, tabs/drawers and compact bottom
+navigation. No oversized headers, welcome banners, featured-card carousels,
+centered maximum-width page foundations or generic card grids. Forms, dialogs,
+token details, tables, and financial controls must remain usable at 375px.
 
 ## Financial clarity
 

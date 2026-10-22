@@ -1,7 +1,8 @@
 # KiaraFun
 
 A Solana token discovery, creation, wallet, and trading workspace built on the
-existing React/Express/PostgreSQL application.
+existing React/Express/PostgreSQL application. The interface is a dark-first,
+multi-panel trading terminal; optional light mode remains available.
 
 ## Run
 
@@ -13,10 +14,17 @@ npm run check
 npm run build
 npm start
 node --import tsx --test server/network-safety.test.ts
+node script/verify-terminal-preservation.mjs
+node script/browser-check-kiarafun.mjs
 ```
 
 Use the existing `DATABASE_URL` and `SESSION_SECRET`. Do not rotate encryption
 secrets or replace stored wallets for a visual migration.
+
+See `docs/terminal-delivery.md` for the reconstruction matrix, verification
+boundaries and screenshot methodology. Browser checks use an ephemeral signed
+identity and never submit financial operations. A compatible Chromium executable
+may be supplied as the first argument.
 
 ## Financial execution is paused by default
 

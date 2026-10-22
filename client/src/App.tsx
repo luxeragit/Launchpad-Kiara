@@ -8,17 +8,18 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import MonitorPage from "@/pages/monitor";
+import ExplorePage from "@/pages/explore";
 import DeployPage from "@/pages/deploy";
 import WalletsPage from "@/pages/wallets";
 import TokenDashboardPage from "@/pages/token-dashboard";
 import DocsPage from "@/pages/docs";
 import MyTokensPage from "@/pages/my-tokens";
-import { NetworkStatus } from "@/components/network-status";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={MonitorPage} />
+      <Route path="/" component={ExplorePage} />
+      <Route path="/explore" component={ExplorePage} />
       <Route path="/monitor" component={MonitorPage} />
       <Route path="/deploy" component={DeployPage} />
       <Route path="/deploy/:id" component={TokenDashboardPage} />
@@ -33,18 +34,18 @@ function Router() {
 function App() {
   useEffect(() => {
     const stored = localStorage.getItem("theme");
-    const theme = stored === "dark" || stored === "light" ? stored : "light";
+    const theme = stored === "light" ? "light" : "dark";
     document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.toggle("light", theme === "light");
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <div className="app-shell flex flex-col w-full">
+          <div className="app-shell terminal-layout" data-testid="terminal-shell">
             <Navbar />
-            <NetworkStatus />
-            <main className="flex-1 min-w-0">
+            <main className="terminal-main">
               <Router />
             </main>
 

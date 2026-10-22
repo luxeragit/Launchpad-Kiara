@@ -1,2 +1,2 @@
 - [Imported setup boundaries](imported-setup.md) — preserve network behavior during setup; dependency upgrades may retain blocked locked transitive versions.
-- [KiaraFun product boundaries](kiarafun-product.md) — canonical supplied character, in-place feature preservation, and explicit approval before Mainnet execution.
+- [KiaraFun product boundaries](kiarafun-product.md) — canonical character, rejected dashboard, dark terminal architecture, feature preservation and explicit Mainnet approval.

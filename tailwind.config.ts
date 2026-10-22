@@ -83,10 +83,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
-        display: ["var(--font-display)"],
+        sans: ["var(--font-sans)", "Geist", "sans-serif"],
+        serif: ["var(--font-serif)", "Space Grotesk", "sans-serif"],
+        mono: ["var(--font-mono)", "IBM Plex Mono", "monospace"],
+        display: ["var(--font-display)", "Space Grotesk", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

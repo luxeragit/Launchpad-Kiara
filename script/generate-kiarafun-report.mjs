@@ -1,7 +1,16 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 
 const escape = (value) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-const markdown = await readFile("docs/kiarafun-delivery.md", "utf8");
+const terminal = process.argv.includes("--terminal");
+let markdown = await readFile(terminal ? "docs/terminal-delivery.md" : "docs/kiarafun-delivery.md", "utf8");
+if (terminal) {
+  const revision = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  const receipt = JSON.parse(await readFile("generated-artifacts/terminal/browser/results.json", "utf8"));
+  markdown += `\n## Recorded implementation and browser receipt\n\nImplementation commit: \`${revision}\`.\n\n`;
+  markdown += `Browser groups: ${receipt.results.filter((result) => result.passed).length}/${receipt.results.length} passed. Unhandled exceptions: ${receipt.unhandledExceptions}. Financial requests: ${receipt.financialRequests}.\n\n`;
+  for (const result of receipt.results) markdown += `- ${result.passed ? "PASS" : "FAIL"}: ${result.name}${result.error ? ` — ${result.error}` : ""}\n`;
+}
 const inline = (value) => escape(value).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
 const lines = markdown.split("\n");
 let content = "";
@@ -29,7 +38,24 @@ for (const line of lines) {
 }
 flush();
 if (table) content += "</tbody></table></div>";
-const images = [
+const images = terminal ? [
+  ["Before · rejected KiaraFun composition", "generated-artifacts/terminal/before-explore.jpg"],
+  ["After · real Explore terminal", "generated-artifacts/terminal/final-explore-desktop.jpg"],
+  ["Public token inspector · sell mode safely paused", "generated-artifacts/terminal/browser/public-token-inspector-sell-paused.jpg"],
+  ["Create · launch workstation", "generated-artifacts/terminal/browser/create-1440x900.jpg"],
+  ["Wallets · operations workspace", "generated-artifacts/terminal/browser/wallets-1440x900.jpg"],
+  ["Monitor · strategy and positions", "generated-artifacts/terminal/browser/monitor-1440x900.jpg"],
+  ["My Tokens · authenticated empty directory", "generated-artifacts/terminal/browser/my-tokens-1440x900.jpg"],
+  ["Token Dashboard · isolated pending-record fixture, not a live launch", "generated-artifacts/terminal/browser/token-dashboard-isolated-fixture-1440x900.jpg"],
+  ["Docs · topic and reference workspace", "generated-artifacts/terminal/browser/docs-1440x900.jpg"],
+  ["Explore · mobile", "generated-artifacts/terminal/browser/explore-375x812.jpg"],
+  ["Create · mobile", "generated-artifacts/terminal/final-create-mobile.jpg"],
+  ["Wallets · mobile", "generated-artifacts/terminal/browser/wallets-390x844.jpg"],
+  ["Monitor · mobile", "generated-artifacts/terminal/browser/monitor-390x844.jpg"],
+  ["My Tokens · mobile", "generated-artifacts/terminal/browser/my-tokens-390x844.jpg"],
+  ["Token Dashboard · mobile isolated fixture", "generated-artifacts/terminal/browser/token-dashboard-isolated-fixture-390x844.jpg"],
+  ["Docs · mobile", "generated-artifacts/terminal/browser/docs-390x844.jpg"],
+] : [
   ["Before · original Explore", "generated-artifacts/kiarafun/before-explore.jpg"],
   ["After · KiaraFun desktop", "generated-artifacts/kiarafun/explore-desktop.jpg"],
   ["Create · mobile", "generated-artifacts/kiarafun/create-mobile.jpg"],
@@ -40,10 +66,12 @@ for (const [title, path] of images) {
   try {
     const image = await readFile(path);
     gallery += `<figure><figcaption>${escape(title)}</figcaption><img alt="${escape(title)}" src="data:image/jpeg;base64,${image.toString("base64")}"></figure>`;
-  } catch {}
+  } catch {
+    if (terminal) throw new Error(`Missing required terminal screenshot: ${path}`);
+  }
 }
 gallery += "</div>";
-await writeFile("generated-artifacts/kiarafun/implementation-report.html", `<!doctype html>
+await writeFile(terminal ? "generated-artifacts/terminal/implementation-report.html" : "generated-artifacts/kiarafun/implementation-report.html", `<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KiaraFun implementation & verification</title><style>
 *{box-sizing:border-box}body{margin:0;background:#f5f9fd;color:#17253b;font:15px/1.65 system-ui,sans-serif}

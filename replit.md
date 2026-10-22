@@ -11,7 +11,7 @@
 
 ## Overview
 
-KiaraFun is a Solana discovery, managed-wallet, token-creation, and trading workspace. The original user-supplied Kiara character accompanies a light-first sky/navy interface with persisted dark mode. The existing stack, schema, wallet encryption, transaction builders, and route contracts are retained. Pump.fun has the existing live deployment implementation; Bonk.fun/Meteora save configuration-only pending records. See `DOCS.md` for current capability boundaries.
+KiaraFun is a Solana discovery, managed-wallet, token-creation, and trading terminal. The original user-supplied Kiara character identifies a dark-first workstation with an icon rail, compact toolbar and real-data ticker, dense rows, and independently scrolling operational panels. Optional light mode is persisted. The previous light-blue card dashboard was rejected. The existing stack, schema, wallet encryption, transaction builders, route contracts and network safeguards are retained. Pump.fun has the existing live deployment implementation; Bonk.fun/Meteora save configuration-only pending records. See `DOCS.md` for capability boundaries and `docs/terminal-preservation.md` for reconstruction boundaries.
 
 ## User Preferences
 
@@ -91,8 +91,8 @@ Key backend modules:
 
 ### Design System
 The KiaraFun design system uses:
-- Light-first sky-blue/navy surfaces with persisted midnight dark mode.
-- Sora headings, DM Sans interface text, IBM Plex Mono financial values.
+- Dark-first near-black trading surfaces with restrained sky/coral accents and optional persisted light mode.
+- Geist interface text, Space Grotesk branded headings, IBM Plex Mono tabular financial values.
 - The original supplied Kiara artwork, without generated substitutes.
 - Existing Radix/shadcn primitives refined for responsive financial workflows.
 

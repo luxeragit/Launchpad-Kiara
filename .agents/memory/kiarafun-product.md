@@ -47,6 +47,7 @@ workspaces for every major route. Retain optional light mode and original Kiara.
 technical tests; it preserved the wrong page architecture.
 
 **How to apply:** Treat the user's Pump.fun screenshot as the spatial and
-interaction acceptance reference, not branding to copy. Study both requested
-comparison screenshots before UI edits. Verify actual geometry and density in
+interaction acceptance reference, not branding to copy. Study supplied comparison
+screenshots when available; the user clarified that the rejected interface means
+the prior design, which can be captured from the app. Verify actual geometry and density in
 new browser screenshots; builds and a recolored dashboard do not meet acceptance.

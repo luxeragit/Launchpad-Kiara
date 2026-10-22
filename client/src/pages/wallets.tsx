@@ -79,6 +79,7 @@ import {
   Archive,
   Loader2,
   CircleAlert,
+  Search,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
@@ -87,6 +88,7 @@ import type { Wallet as WalletType } from "@shared/schema";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useAuth } from "@/contexts/AuthContext";
 import { WalletConnectButton } from "@/components/wallet-connect-button";
+import { WalletRecords } from "@/components/terminal/wallet-records";
 
 const createWalletFormSchema = z.object({
   label: z.string().min(1, "Label is required").max(50),
@@ -131,6 +133,8 @@ export default function WalletsPage() {
   const [consolidateTargetWallet, setConsolidateTargetWallet] = useState<string>("");
   const [burnTokenMint, setBurnTokenMint] = useState<string>("");
   const [burnAmount, setBurnAmount] = useState<string>("0");
+  const [walletSearch, setWalletSearch] = useState("");
+  const [walletPane, setWalletPane] = useState<"directory" | "inspector" | "actions">("directory");
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const network = useNetworkStatus();
@@ -481,7 +485,74 @@ export default function WalletsPage() {
   const activeCount = wallets?.filter((w) => w.isActive).length || 0;
 
   return (
-    <div className="page-frame page-enter max-w-7xl space-y-6 py-7 md:py-10">
+    <div className="terminal-workspace flex min-h-0 flex-col">
+      <div className="flex min-h-11 items-center gap-3 border-b border-border px-3">
+        <Wallet className="h-4 w-4 text-sky-400" />
+        <h1 className="text-[13px] font-semibold">Wallet operations</h1>
+        <span className="text-[10px] text-muted-foreground">MANAGED ASSETS</span>
+        <div className="ml-auto flex items-center gap-2 text-[10px]">
+          <span className={`h-1.5 w-1.5 rounded-full ${transactionsEnabled ? "bg-emerald-400" : "bg-rose-400"}`} />
+          {transactionsEnabled ? "Execution ready" : "Transactions paused"}
+          <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { refetch(); refreshBalancesMutation.mutate(); }} disabled={!isAuthenticated || isRefetching || refreshBalancesMutation.isPending} data-testid="button-refresh-wallets"><RefreshCw className={`mr-1 h-3 w-3 ${isRefetching || refreshBalancesMutation.isPending ? "animate-spin" : ""}`} />Refresh</Button>
+        </div>
+      </div>
+      <nav className="flex border-b border-border xl:hidden" aria-label="Wallet workspace panels">
+        {(["directory", "inspector", "actions"] as const).map(pane => <button key={pane} type="button" onClick={() => setWalletPane(pane)} aria-current={walletPane === pane ? "page" : undefined} className={`flex-1 px-3 py-2 text-[10px] capitalize ${walletPane === pane ? "border-b-2 border-sky-400 text-foreground" : "text-muted-foreground"}`}>{pane === "actions" ? "Actions & activity" : pane}</button>)}
+      </nav>
+      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(250px,0.86fr)_minmax(300px,1.08fr)_minmax(280px,0.9fr)]">
+        <section className={`terminal-panel min-h-0 ${walletPane !== "directory" ? "hidden xl:flex" : ""}`} data-testid="wallet-directory">
+          <header className="terminal-panel-header"><div><h2 className="text-[12px] font-semibold">Wallet directory</h2><p className="text-[10px] text-muted-foreground">{isAuthenticated && wallets ? `${wallets.length} managed · ${activeCount} active` : "Private session data"}</p></div><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowCreateDialog(true)} aria-label="Create wallet" data-testid="button-create-wallet"><Plus className="h-4 w-4" /></Button></header>
+          <div className="border-b border-border p-2"><div className="relative"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input value={walletSearch} onChange={e => setWalletSearch(e.target.value)} placeholder="Search label or address" className="h-8 pl-7 text-[11px]" aria-label="Search wallets" /></div><div className="mt-2 flex gap-1"><Button size="sm" variant="outline" className="h-7 flex-1 text-[10px]" onClick={() => setShowCreateDialog(true)} data-testid="button-create-wallet-empty"><Plus className="mr-1 h-3 w-3" />Create</Button><Button size="sm" variant="outline" className="h-7 flex-1 text-[10px]" onClick={() => setShowImportDialog(true)} data-testid="button-import-wallet-empty"><Download className="mr-1 h-3 w-3" />Import</Button></div></div>
+          <div className="terminal-scroll min-h-0 flex-1">
+            {authLoading || (isAuthenticated && isLoading) ? <div className="space-y-2 p-3">{[1,2,3].map(n => <div key={n} className="h-14 animate-pulse bg-secondary/60" />)}</div>
+              : !isAuthenticated ? <div className="flex min-h-56 flex-col items-center justify-center gap-3 px-4 text-center"><img src="/kiara.png" alt="" className="h-16 w-16 object-contain" /><p className="text-xs font-medium">Wallet directory is disconnected</p><p className="text-[10px] text-muted-foreground">Connect to load this session’s private managed wallets.</p><WalletConnectButton /></div>
+              : walletsError ? <div className="p-4 text-center text-xs"><CircleAlert className="mx-auto mb-2 h-5 w-5 text-destructive" />Wallet list unavailable<Button size="sm" variant="outline" className="mt-2" onClick={() => refetch()}>Retry</Button></div>
+              : !wallets?.length ? <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-4 text-center"><img src="/kiara.png" alt="" className="h-14 w-14 object-contain" /><p className="text-xs">No managed wallets</p><p className="text-[10px] text-muted-foreground">Create or import a wallet to populate this directory.</p></div>
+              : wallets.filter(w => `${w.label} ${w.address}`.toLowerCase().includes(walletSearch.toLowerCase())).map(wallet => <button key={wallet.id} type="button" onClick={() => { setSelectedWallet(wallet); setSelectedWallets(prev => prev.includes(wallet.id) ? prev.filter(id => id !== wallet.id) : [...prev, wallet.id]); }} aria-pressed={selectedWallets.includes(wallet.id)} className={`w-full border-b border-border px-3 py-3 text-left transition-colors hover:bg-secondary/60 ${selectedWallet?.id === wallet.id ? "bg-secondary/70" : ""}`} data-testid={`row-wallet-${wallet.id}`}>
+                <div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-medium">{wallet.label}</span><span className={`text-[9px] ${wallet.isArchived ? "text-muted-foreground" : wallet.isActive ? "text-emerald-400" : "text-amber-300"}`}>{wallet.isArchived ? "ARCHIVED" : wallet.isActive ? "ACTIVE" : "INACTIVE"}</span></div>
+                <div className="mt-1 flex items-center justify-between gap-2"><code className="truncate font-mono text-[10px] text-muted-foreground">{wallet.address.slice(0, 8)}…{wallet.address.slice(-6)}</code><span className="shrink-0 font-mono text-[10px] tabular-nums">{wallet.balance == null ? "—" : `${wallet.balance.toFixed(4)} SOL`}</span></div>
+                <div className="mt-1 text-[9px] text-muted-foreground">{wallet.walletType || "created"}</div>
+              </button>)}
+          </div>
+          <div className="flex items-center justify-between border-t border-border p-2 text-[10px]"><span className="text-muted-foreground">Batch selection · {selectedWallets.length}</span><button type="button" className="text-sky-400 hover:underline" onClick={selectAllWallets} data-testid="checkbox-select-all">{selectedWallets.length === (wallets?.length || 0) ? "Clear all" : "Select all"}</button></div>
+        </section>
+
+        <section className={`terminal-panel min-h-0 border-t-0 xl:border-l-0 ${walletPane !== "inspector" ? "hidden xl:flex" : ""}`} data-testid="wallet-inspector">
+          <header className="terminal-panel-header"><div><h2 className="text-[12px] font-semibold">Wallet inspector</h2><p className="text-[10px] text-muted-foreground">Verified account details</p></div><Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => { refetch(); refreshBalancesMutation.mutate(); }} disabled={!isAuthenticated || refreshBalancesMutation.isPending}><RefreshCw className="mr-1 h-3 w-3" />Refresh</Button></header>
+          {selectedWallet ? <div className="terminal-scroll min-h-0 flex-1 p-3">
+            <div className="border-b border-border pb-3"><div className="text-[10px] text-muted-foreground">SELECTED WALLET</div><h3 className="mt-1 text-sm font-semibold">{selectedWallet.label}</h3><div className="mt-2 flex items-start gap-2"><code className="min-w-0 flex-1 break-all font-mono text-[10px] leading-5 text-muted-foreground">{selectedWallet.address}</code><Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => copyToClipboard(selectedWallet.address, "Address")} aria-label="Copy address"><Copy className="h-3.5 w-3.5" /></Button></div></div>
+            <div className="border-b border-border py-4"><div className="text-[10px] text-muted-foreground">SOL BALANCE</div><div className="mt-1 font-mono text-2xl tabular-nums">{selectedWallet.balance == null ? "—" : selectedWallet.balance.toFixed(4)} <span className="text-xs text-muted-foreground">SOL</span></div><div className="mt-2 flex gap-2"><Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { setSelectedWallet(selectedWallet); setShowDepositDialog(true); }}><ArrowDownToLine className="mr-1 h-3 w-3" />Receive</Button><Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { setSelectedWallet(selectedWallet); setShowTransferDialog(true); }}><Send className="mr-1 h-3 w-3" />Transfer</Button></div></div>
+            <WalletRecords walletId={selectedWallet.id} isAuthenticated={isAuthenticated} />
+            <div className="border-t border-border py-3"><div className="mb-2 text-[11px] font-medium">Key custody</div><div className="flex items-center gap-2"><code className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">{visibleKeys.has(selectedWallet.id) && fetchedKeys.has(selectedWallet.id) ? fetchedKeys.get(selectedWallet.id) : "Private key hidden"}</code><Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => toggleKeyVisibility(selectedWallet.id)} disabled={loadingKeys.has(selectedWallet.id)} data-testid={`button-toggle-key-${selectedWallet.id}`}>{loadingKeys.has(selectedWallet.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : visibleKeys.has(selectedWallet.id) ? <EyeOff className="mr-1 h-3 w-3" /> : <Eye className="mr-1 h-3 w-3" />}{visibleKeys.has(selectedWallet.id) ? "Hide" : "Reveal"}</Button></div><p className="mt-1 text-[9px] text-amber-300/80">Reveal requires explicit confirmation; key data is cleared when the page closes.</p></div>
+          </div> : <div className="flex min-h-56 flex-col items-center justify-center gap-2 p-4 text-center"><img src="/kiara.png" alt="" className="h-16 w-16 object-contain" /><p className="text-xs font-medium">Select a wallet to inspect</p><p className="text-[10px] text-muted-foreground">Balances appear only when returned by the authenticated wallet service.</p></div>}
+        </section>
+
+        <section className={`terminal-panel min-h-0 border-t-0 xl:border-l-0 ${walletPane !== "actions" ? "hidden xl:flex" : ""}`} data-testid="wallet-actions">
+          <header className="terminal-panel-header"><div><h2 className="text-[12px] font-semibold">Actions &amp; activity</h2><p className="text-[10px] text-muted-foreground">{transactionsEnabled ? "Network execution available" : network.data?.reason || "Network safety not verified"}</p></div></header>
+          <div className="terminal-scroll min-h-0 flex-1 p-3">
+            {!isAuthenticated && <div className="mb-3 border border-border p-2 text-[10px] text-muted-foreground">Wallet mutations require the existing authenticated session.</div>}
+            <div className="mb-2 text-[9px] font-semibold text-muted-foreground">EVERYDAY</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" onClick={() => setShowCreateDialog(true)} data-testid="button-create-wallet"><Plus className="mr-1 h-3 w-3" />Create</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" onClick={() => setShowImportDialog(true)} data-testid="button-import-wallet"><Download className="mr-1 h-3 w-3" />Import</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallet} onClick={() => setShowDepositDialog(true)}><ArrowDownToLine className="mr-1 h-3 w-3" />Receive</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallet} onClick={() => setShowTransferDialog(true)} data-testid="toolbar-transfer"><Send className="mr-1 h-3 w-3" />Transfer SOL</Button>
+            </div>
+            <div className="mb-2 mt-4 text-[9px] font-semibold text-muted-foreground">SELECTED · {selectedWallets.length}</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallets.length || downloadMutation.isPending} onClick={() => { if (window.confirm("Export selected private keys to a JSON file? Store securely; anyone with this file can control these wallets.")) downloadMutation.mutate(selectedWallets); }} data-testid="toolbar-download"><ArrowDownToLine className="mr-1 h-3 w-3" />Export JSON</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallets.length || archiveMutation.isPending} onClick={handleArchiveSelected} data-testid="toolbar-archive"><Archive className="mr-1 h-3 w-3" />Archive</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallets.length || !transactionsEnabled} onClick={() => setShowFundDialog(true)} data-testid="toolbar-fund"><ArrowUpFromLine className="mr-1 h-3 w-3" />Fund</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallets.length || !transactionsEnabled} onClick={() => setShowConsolidateDialog(true)} data-testid="toolbar-consolidate"><ArrowDownToLine className="mr-1 h-3 w-3" />Consolidate</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallet} onClick={() => setShowBurnDialog(true)} data-testid="toolbar-burn"><Flame className="mr-1 h-3 w-3" />Burn SPL</Button>
+              <Button size="sm" variant="outline" className="justify-start text-[10px]" disabled={!selectedWallet} onClick={() => setShowDeleteDialog(true)}><Trash2 className="mr-1 h-3 w-3" />Delete</Button>
+            </div>
+            <Button size="sm" variant="ghost" className="mt-3 w-full justify-start text-[10px] text-destructive" onClick={() => setShowCleanupDialog(true)} data-testid="toolbar-cleanup"><Trash2 className="mr-2 h-3 w-3" />Cleanup zero-balance wallets…</Button>
+            <div className="mt-4 border-t border-border pt-3"><div className="mb-1 text-[9px] font-semibold text-muted-foreground">TRANSACTION GATE</div><p className="text-[10px] leading-4 text-muted-foreground">{network.data?.reason || (transactionsEnabled ? "Network safety verification is enabled." : "Financial operations remain disabled until the configured network is verified.")}</p></div>
+          </div>
+        </section>
+      </div>
+      <div className="hidden">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-md bg-primary/10">
@@ -1388,6 +1459,7 @@ export default function WalletsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
