@@ -36,3 +36,17 @@ Mainnet trading services and prohibited silent endpoint changes.
 
 **How to apply:** Never enable transactions just to make a UI test pass; use
 read-only network verification and keep stop controls accessible.
+
+The user rejected the light-blue SaaS/dashboard composition. Reconstruct the
+presentation as a dark-first trading terminal, not incremental card restyling:
+a narrow fixed icon rail, compact toolbar and real-data ticker, adjacent
+independently scrolling market panels, dense token rows, and purpose-built
+workspaces for every major route. Retain optional light mode and original Kiara.
+
+**Why:** The user explicitly rejected the prior implementation despite passing
+technical tests; it preserved the wrong page architecture.
+
+**How to apply:** Treat the user's Pump.fun screenshot as the spatial and
+interaction acceptance reference, not branding to copy. Study both requested
+comparison screenshots before UI edits. Verify actual geometry and density in
+new browser screenshots; builds and a recolored dashboard do not meet acceptance.
