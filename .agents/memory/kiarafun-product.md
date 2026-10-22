@@ -51,3 +51,11 @@ interaction acceptance reference, not branding to copy. Study supplied compariso
 screenshots when available; the user clarified that the rejected interface means
 the prior design, which can be captured from the app. Verify actual geometry and density in
 new browser screenshots; builds and a recolored dashboard do not meet acceptance.
+
+The MARKET strip must run horizontally rather than remain static; keep its label
+fixed while the real token feed scrolls.
+
+**Why:** The user explicitly corrected the static market strip.
+
+**How to apply:** Preserve continuous ticker motion across shared-header routes,
+with a pause control and an accessible reduced-motion alternative.

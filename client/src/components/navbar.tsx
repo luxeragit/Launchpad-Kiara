@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Activity, BookOpen, Compass, Moon, Plus, Search, Sun, Wallet, Layers3, AlertTriangle, Check, ChevronDown } from "lucide-react";
+import { Activity, BookOpen, Compass, Moon, Plus, Search, Sun, Wallet, Layers3, AlertTriangle, Check, ChevronDown, Pause, Play } from "lucide-react";
 import { WalletConnectButton } from "@/components/wallet-connect-button";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useQuery } from "@tanstack/react-query";
@@ -57,19 +57,27 @@ function RailNetworkStatus() {
 }
 
 function MarketTicker() {
+  const [paused, setPaused] = useState(false);
   const { data } = useQuery<MarketFeed>({ queryKey: ["/api/pumpfun/trending"], refetchInterval: 5000 });
   const { data: latestFeed } = useQuery<MarketFeed>({ queryKey: ["/api/pumpfun/tokens"], refetchInterval: 5000 });
   const tokens = (data?.tokens?.length ? data.tokens : latestFeed?.tokens ?? []).filter((t) => t.symbol).slice(0, 12);
   return <div data-testid="market-ticker" className="terminal-ticker flex min-w-0 items-center border-b border-border bg-[#0d0f14] px-3">
-    <span className="mr-3 shrink-0 border-r border-border pr-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Market</span>
-    <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap">
-      {tokens.length ? tokens.map((token) => (
-        <div key={token.mint} className="flex shrink-0 items-center gap-1.5 text-[10px]">
+    <div className="mr-3 flex shrink-0 items-center gap-1.5 border-r border-border pr-3">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Market</span>
+      <button type="button" data-testid="market-ticker-toggle" onClick={() => setPaused((value) => !value)} disabled={!tokens.length} aria-label={paused ? "Resume market ticker" : "Pause market ticker"} aria-pressed={paused} title={paused ? "Resume market ticker" : "Pause market ticker"} className="flex h-6 w-5 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-40">
+        {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+      </button>
+    </div>
+    <div className="market-ticker-viewport min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+      {tokens.length ? <div className="market-ticker-track" data-paused={paused}>
+        {[0, 1].map((copy) => <div key={copy} className="market-ticker-group" aria-hidden={copy === 1 ? true : undefined}>
+          {tokens.map((token) => <div key={token.mint} className="flex shrink-0 items-center gap-1.5 text-[10px]">
           {token.image ? <img src={token.image} alt="" className="h-4 w-4 rounded-[2px] object-cover" /> : <span className="h-1.5 w-1.5 rounded-full bg-sky-400/80" />}
           <span className="font-semibold text-foreground">{token.symbol}</span>
           {typeof token.priceChange === "number" && <span className={token.priceChange >= 0 ? "font-mono text-emerald-400" : "font-mono text-rose-400"}>{token.priceChange >= 0 ? "+" : ""}{token.priceChange.toFixed(1)}%</span>}
-        </div>
-      )) : <span className="text-[10px] text-muted-foreground">{data?.connected === false ? "Market feed disconnected" : "Waiting for supported market feed"}</span>}
+          </div>)}
+        </div>)}
+      </div> : <span className="text-[10px] text-muted-foreground">{data?.connected === false ? "Market feed disconnected" : "Waiting for supported market feed"}</span>}
     </div>
   </div>;
 }

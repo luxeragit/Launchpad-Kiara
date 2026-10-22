@@ -139,6 +139,40 @@ try {
   await navigate("/");
   await evaluate("localStorage.removeItem('theme')");
   await navigate("/");
+  await check("market ticker moves continuously, pauses, and respects reduced motion", async () => {
+    await until("document.querySelector('.market-ticker-track')");
+    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 0, y: 0 });
+    const transform = () => evaluate("getComputedStyle(document.querySelector('.market-ticker-track')).transform");
+    const first = await transform();
+    await pause(400);
+    assert.notEqual(await transform(), first, "Desktop ticker must move without input");
+    await click('[data-testid="market-ticker-toggle"]');
+    await pause(100);
+    const stopped = await transform();
+    await pause(400);
+    assert.equal(await transform(), stopped, "Pause must stop the ticker");
+    await click('[data-testid="market-ticker-toggle"]');
+    await pause(100);
+    const resumed = await transform();
+    await pause(400);
+    assert.notEqual(await transform(), resumed, "Resume must restart motion");
+    await viewport(390, 844);
+    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 0, y: 0 });
+    const mobile = await transform();
+    await pause(400);
+    assert.notEqual(await transform(), mobile, "Mobile ticker must also move");
+    assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true);
+    await capture("market-running-mobile");
+    await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.market-ticker-track')).animationName"), "none");
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.market-ticker-viewport')).overflowX"), "auto");
+    await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
+    await viewport(1440, 900);
+    await navigate("/docs");
+    await until("document.querySelector('.market-ticker-track')");
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.market-ticker-track')).animationName"), "market-ticker-scroll");
+    await navigate("/");
+  });
   await check("dark terminal geometry and independent desktop scrolling", async () => {
     assert.equal(await evaluate("document.documentElement.classList.contains('dark')"), true);
     const bounds = await evaluate(`(() => {

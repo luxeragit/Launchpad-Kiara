@@ -107,6 +107,25 @@ code,.font-mono,[data-financial] { font-family:var(--font-mono)!important; font-
 .terminal-rail { grid-column:1; grid-row:1 / 4; }
 .terminal-topbar { grid-column:2; grid-row:1; }
 .terminal-ticker { grid-column:2; grid-row:2; }
+.market-ticker-track {
+  display: flex;
+  width: max-content;
+  min-width: 200%;
+  animation: market-ticker-scroll 45s linear infinite;
+  will-change: transform;
+}
+.market-ticker-group { display:flex; flex:1 0 auto; align-items:center; gap:16px; padding-right:16px; }
+.market-ticker-track[data-paused="true"],
+.market-ticker-viewport:focus-within .market-ticker-track { animation-play-state:paused; }
+@media (hover:hover) and (pointer:fine) {
+  .market-ticker-viewport:hover .market-ticker-track { animation-play-state:paused; }
+}
+@keyframes market-ticker-scroll { to { transform:translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .market-ticker-viewport { overflow-x:auto; }
+  .market-ticker-track { animation:none; transform:none; min-width:0; will-change:auto; }
+  .market-ticker-group[aria-hidden="true"] { display:none; }
+}
 .terminal-main { grid-column:2; grid-row:3; min-width:0; min-height:0; overflow:hidden; }
 .terminal-workspace { width:100%; height:100%; min-width:0; min-height:0; overflow:hidden; }
 .terminal-panel { display:flex; flex-direction:column; min-width:0; min-height:0; border-right:1px solid hsl(var(--border)); background:#101218; }
