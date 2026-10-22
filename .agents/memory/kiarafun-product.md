@@ -1,0 +1,38 @@
+---
+name: KiaraFun product boundaries
+description: User-stated identity, functionality-preservation, and real-fund safety requirements for this product.
+---
+
+The product is **KiaraFun**, with concise English copy. Use the supplied original
+blonde anime character with blue eyes, a red ribbon, sailor uniform, and blue sky.
+Do not generate replacement characters, create a brand token/ticker, or invent
+official social destinations.
+
+**Why:** The user explicitly established this canonical brand identity and
+required the actual supplied illustration rather than a substitute.
+
+**How to apply:** Treat the character as a controlled brand asset. Remove legacy
+active branding, but preserve historical identifiers/data and compatibility.
+
+Redesign the existing product in place, preserving every real feature and saved
+setting. Do not rewrite the backend, replace wallets, migrate the stack, run
+destructive migrations, change encryption secrets/formats, or silently change
+RPCs, program addresses, signing, routing, fees, or deployment destinations.
+
+**Why:** The user treats functionality and financial correctness as more
+important than visual polish.
+
+**How to apply:** Use non-destructive regression checks. Do not execute trades,
+deployments, transfers, claims, or burns during UI testing. Clearly disclose
+unverified live transaction paths and unsupported capability boundaries.
+
+Production trading is intended for Solana Mainnet, but network changes and
+real-money execution require explicit approval after verification. If network
+configuration is ambiguous, show the actual status and block unsafe execution
+without erasing saved settings.
+
+**Why:** The user explicitly prohibited mixing Devnet wallet information with
+Mainnet trading services and prohibited silent endpoint changes.
+
+**How to apply:** Never enable transactions just to make a UI test pass; use
+read-only network verification and keep stop controls accessible.

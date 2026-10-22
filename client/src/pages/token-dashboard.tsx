@@ -45,6 +45,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TokenDeployment, FeeActivity, Wallet as WalletType, TokenHolding } from "@shared/schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNetworkStatus } from "@/hooks/use-network-status";
+import { useAuth } from "@/contexts/AuthContext";
+import { WalletConnectButton } from "@/components/wallet-connect-button";
 
 interface TokenAnalytics {
   mint: string;
@@ -110,6 +113,9 @@ export default function TokenDashboardPage() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const network = useNetworkStatus();
+  const transactionsEnabled = !!network.data?.transactionsEnabled && !network.isError;
   
   const [allocations, setAllocations] = useState({
     burn: 20,
@@ -124,43 +130,45 @@ export default function TokenDashboardPage() {
   const [lpBurnAmount, setLpBurnAmount] = useState<string>("");
   const [selectedLpWalletId, setSelectedLpWalletId] = useState<string>("");
 
-  const { data: deployment, isLoading: deploymentLoading } = useQuery<TokenDeployment>({
+  const { data: deployment, isLoading: deploymentLoading, isError: deploymentError, refetch: refetchDeployment } = useQuery<TokenDeployment>({
     queryKey: ["/api/tokens", id],
-    enabled: !!id,
+    enabled: !!id && isAuthenticated,
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
-  const { data: feeInfo, isLoading: feeLoading, refetch: refetchFees } = useQuery<FeeInfo>({
+  const { data: feeInfo, isLoading: feeLoading, isError: feeError, refetch: refetchFees } = useQuery<FeeInfo>({
     queryKey: ["/api/tokens", id, "fees"],
-    enabled: !!id,
+    enabled: !!id && isAuthenticated,
     refetchInterval: 15000, // Auto-refresh every 15 seconds
   });
 
   const { data: analytics, isLoading: analyticsLoading, refetch: refetchAnalytics } = useQuery<TokenAnalytics>({
     queryKey: ["/api/tokens", id, "analytics"],
-    enabled: !!id && !!deployment?.tokenAddress,
+    enabled: !!id && isAuthenticated && !!deployment?.tokenAddress,
     refetchInterval: 5000, // Auto-refresh every 5 seconds for real-time data
   });
 
   const { data: safetyScore, isLoading: safetyLoading } = useQuery<RugSafetyScore>({
     queryKey: ["/api/tokens", id, "safety"],
-    enabled: !!id && !!deployment?.tokenAddress,
+    enabled: !!id && isAuthenticated && !!deployment?.tokenAddress,
     refetchInterval: 30000, // Auto-refresh every 30 seconds
   });
 
   const { data: wallets } = useQuery<WalletType[]>({
     queryKey: ["/api/wallets"],
+    enabled: isAuthenticated,
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
   const { data: tokenHoldings, refetch: refetchHoldings } = useQuery<TokenHolding[]>({
     queryKey: ["/api/holdings/token", deployment?.tokenAddress],
-    enabled: !!deployment?.tokenAddress,
+    enabled: isAuthenticated && !!deployment?.tokenAddress,
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   const deleteTokenMutation = useMutation({
     mutationFn: async () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to manage this launch record.");
       return apiRequest("DELETE", `/api/tokens/${id}`);
     },
     onSuccess: () => {
@@ -175,6 +183,8 @@ export default function TokenDashboardPage() {
 
   const quickBuyMutation = useMutation({
     mutationFn: async () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before buying.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       if (!selectedWalletId || !deployment?.tokenAddress) {
         throw new Error("Select a wallet first");
       }
@@ -217,6 +227,8 @@ export default function TokenDashboardPage() {
 
   const quickSellMutation = useMutation({
     mutationFn: async (holdingWalletId: string) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before selling.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       if (!deployment?.tokenAddress) {
         throw new Error("Token address not found");
       }
@@ -251,6 +263,7 @@ export default function TokenDashboardPage() {
 
   const updateAllocationMutation = useMutation({
     mutationFn: async (data: { burnPercent: number; ammPercent: number; creatorPercent: number; liquidityPercent: number }) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to update fee allocation.");
       return apiRequest("PUT", `/api/tokens/${id}/fees/allocation`, data);
     },
     onSuccess: () => {
@@ -264,6 +277,8 @@ export default function TokenDashboardPage() {
 
   const claimFeesMutation = useMutation({
     mutationFn: async () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before opening Pump.fun.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       return apiRequest("POST", `/api/tokens/${id}/fees/claim`);
     },
     onSuccess: (data: any) => {
@@ -288,10 +303,15 @@ export default function TokenDashboardPage() {
 
   const toggleAutoClaimMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to change monitoring settings.");
+      if (enabled && !transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       return apiRequest("POST", `/api/tokens/${id}/autoclaim/toggle`, { enabled });
     },
-    onSuccess: () => {
-      toast({ title: "Auto-Claim Updated" });
+    onSuccess: (enabled) => {
+      toast({
+        title: "Claim monitoring updated",
+        description: enabled ? "Availability checks are on; creator claims still need to be completed on Pump.fun." : "Claim availability monitoring is off.",
+      });
       refetchFees();
     },
   });
@@ -310,12 +330,14 @@ export default function TokenDashboardPage() {
 
   const { data: lpInfo, isLoading: lpLoading, refetch: refetchLpInfo } = useQuery<LPTokenInfo>({
     queryKey: ["/api/tokens/mint", deployment?.tokenAddress, "lp-info", selectedLpWalletId],
-    enabled: !!deployment?.tokenAddress && !!selectedLpWalletId,
+    enabled: isAuthenticated && !!deployment?.tokenAddress && !!selectedLpWalletId,
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
   const burnLpMutation = useMutation({
     mutationFn: async () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before burning LP tokens.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       if (!selectedLpWalletId || !lpInfo?.lpMint || !deployment?.tokenAddress) {
         throw new Error("Select a wallet and ensure LP info is available");
       }
@@ -359,6 +381,14 @@ export default function TokenDashboardPage() {
   const lpBurnAmountNum = parseFloat(lpBurnAmount) || 0;
   const isLpBurnAmountValid = lpBurnAmountNum > 0 && lpBurnAmountNum <= (lpInfo?.lpBalance || 0);
 
+  if (authLoading) {
+    return <main className="page-frame space-y-5 py-8"><Skeleton className="h-12 w-full" /><Skeleton className="h-64 w-full" /><Skeleton className="h-56 w-full" /></main>;
+  }
+
+  if (!isAuthenticated) {
+    return <main className="page-frame page-enter max-w-2xl py-10"><Card className="border-primary/25 bg-primary/[.035]"><CardContent className="flex flex-col items-center gap-4 py-12 text-center"><div className="grid h-12 w-12 place-items-center rounded-full bg-primary/10"><Wallet className="h-5 w-5 text-primary" /></div><div><h1 className="font-display text-xl font-semibold">Connect to view this launch</h1><p className="mt-2 text-sm text-muted-foreground">Token records, positions, and wallet actions are private to your signed-in session.</p></div><WalletConnectButton /><Button variant="ghost" onClick={() => setLocation("/my-tokens")}>Back to My Tokens</Button></CardContent></Card></main>;
+  }
+
   if (deploymentLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -368,6 +398,10 @@ export default function TokenDashboardPage() {
         </div>
       </div>
     );
+  }
+
+  if (!deployment && deploymentError) {
+    return <main className="page-frame py-8"><Card><CardContent className="flex flex-col items-center gap-3 py-12 text-center"><AlertTriangle className="h-8 w-8 text-destructive" /><h1 className="font-display text-lg font-semibold">Launch record unavailable</h1><p className="text-sm text-muted-foreground">This record could not be loaded. It may be a temporary connection issue.</p><Button variant="outline" onClick={() => refetchDeployment()}>Retry</Button></CardContent></Card></main>;
   }
 
   if (!deployment) {
@@ -386,27 +420,27 @@ export default function TokenDashboardPage() {
   }
 
   if (!deployment.tokenAddress) {
+    const configurationOnly = deployment.platform !== "pumpfun";
     return (
-      <div className="p-6 max-w-2xl mx-auto">
+      <main className="page-frame page-enter max-w-3xl py-8">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Deployment Incomplete
+              {configurationOnly ? "Launch configuration saved" : "Launch request pending"}
             </CardTitle>
             <CardDescription>
-              Token "{deployment.name}" ({deployment.symbol}) was not fully deployed to the blockchain.
+              {configurationOnly
+                ? `${deployment.platform === "bonkfun" ? "Bonk.fun" : "Meteora"} live launch is not implemented. This record is configuration-only and has no mint address.`
+                : `Pump.fun request for "${deployment.name}" (${deployment.symbol}) has no mint address yet. Its current status is ${deployment.status}.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 bg-muted rounded-md space-y-2">
-              <p className="text-sm font-medium">Possible causes:</p>
-              <ul className="text-sm text-muted-foreground list-disc ml-4 space-y-1">
-                <li>Insufficient SOL balance in wallet (need ~0.05+ SOL)</li>
-                <li>Transaction failed or timed out</li>
-                <li>Network congestion on Solana</li>
-                <li>Session expired during deployment</li>
-              </ul>
+              <p className="text-sm font-medium">{configurationOnly ? "Saved configuration" : "No on-chain launch is confirmed"}</p>
+              <p className="text-sm text-muted-foreground">{configurationOnly
+                ? "Platform selection and token details are preserved. Live deployment support has not been implemented."
+                : "A submitted request is not proof of a successful transaction. Check the launch record again for an actual mint address."}</p>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setLocation("/deploy")} data-testid="button-back-deploy">
@@ -417,14 +451,14 @@ export default function TokenDashboardPage() {
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" data-testid="button-delete-token">
                     <X className="h-4 w-4 mr-2" />
-                    Delete Failed Deployment
+                    Remove launch record
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete this deployment?</AlertDialogTitle>
+                    <AlertDialogTitle>Remove this launch record?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove the "{deployment.name}" entry. You can deploy a new token afterward.
+                      This will remove the saved "{deployment.name}" record from your list.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -441,7 +475,7 @@ export default function TokenDashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     );
   }
 
@@ -449,14 +483,14 @@ export default function TokenDashboardPage() {
   const isValidAllocation = totalAllocation === 100;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <main className="page-frame page-enter max-w-7xl space-y-6 py-7 md:py-10">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => setLocation("/deploy")} data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{deployment.name}</h1>
+            <div><p className="mb-1 text-[10px] font-semibold uppercase tracking-[.16em] text-primary">Token record</p><h1 className="font-display text-2xl font-semibold tracking-tight">{deployment.name}</h1></div>
             <Badge variant="secondary" className="font-mono">{deployment.symbol}</Badge>
             <Badge variant={deployment.status === "deployed" ? "default" : "outline"}>
               {deployment.status}
@@ -467,6 +501,10 @@ export default function TokenDashboardPage() {
               {deployment.tokenAddress}
             </p>
           )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="outline">{deployment.platform === "pumpfun" ? "Pump.fun · launch requests supported" : `${deployment.platform === "bonkfun" ? "Bonk.fun" : "Meteora"} · configuration only, no live launch`}</Badge>
+            {deployment.platform !== "pumpfun" && <p className="w-full text-xs text-amber-800 dark:text-amber-200">Live launch is not implemented for this platform. This record must not be treated as deployed.</p>}
+          </div>
         </div>
       </div>
 
@@ -534,7 +572,7 @@ export default function TokenDashboardPage() {
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={() => quickBuyMutation.mutate()}
-                  disabled={quickBuyMutation.isPending || !selectedWalletId}
+                  disabled={quickBuyMutation.isPending || !selectedWalletId || !transactionsEnabled}
                   data-testid="button-quick-buy"
                 >
                   {quickBuyMutation.isPending ? "Buying..." : `Buy ${deployment.symbol}`}
@@ -599,7 +637,7 @@ export default function TokenDashboardPage() {
                             variant="destructive"
                             size="sm"
                             onClick={() => quickSellMutation.mutate(holding.walletId!)}
-                            disabled={quickSellMutation.isPending}
+                            disabled={quickSellMutation.isPending || !transactionsEnabled}
                             data-testid={`button-sell-${holding.id}`}
                           >
                             {quickSellMutation.isPending ? "..." : `Sell ${sellPercent}%`}
@@ -648,7 +686,7 @@ export default function TokenDashboardPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold font-mono">
-                  ${analytics?.price?.toFixed(8) || "0.00000000"}
+                  {analytics?.price !== undefined ? `$${analytics.price.toFixed(8)}` : "—"}
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   {(analytics?.priceChange24h || 0) >= 0 ? (
@@ -656,8 +694,8 @@ export default function TokenDashboardPage() {
                   ) : (
                     <TrendingDown className="h-3 w-3 text-red-500" />
                   )}
-                  <span className={(analytics?.priceChange24h || 0) >= 0 ? "text-green-500" : "text-red-500"}>
-                    {(analytics?.priceChange24h || 0).toFixed(2)}% 24h
+                  <span className={analytics?.priceChange24h === undefined ? "text-muted-foreground" : analytics.priceChange24h >= 0 ? "text-green-500" : "text-red-500"}>
+                    {analytics?.priceChange24h !== undefined ? `${analytics.priceChange24h.toFixed(2)}% 24h` : "24h change unavailable"}
                   </span>
                 </div>
               </>
@@ -676,10 +714,10 @@ export default function TokenDashboardPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold font-mono">
-                  ${formatNumber(analytics?.marketCap || 0)}
+                  {analytics?.marketCap !== undefined ? `$${formatNumber(analytics.marketCap)}` : "—"}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Liquidity: {formatSOL(analytics?.liquidity || 0)}
+                  Liquidity: {analytics?.liquidity !== undefined ? formatSOL(analytics.liquidity) : "Liquidity unavailable"}
                 </p>
               </>
             )}
@@ -697,10 +735,10 @@ export default function TokenDashboardPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold font-mono">
-                  {formatNumber(analytics?.holders || 0, 0)}
+                  {analytics?.holders !== undefined ? formatNumber(analytics.holders, 0) : "—"}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {formatNumber(analytics?.transactions || 0, 0)} replies
+                  {analytics?.transactions !== undefined ? formatNumber(analytics.transactions, 0) : "—"} transactions
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   (top 20 accounts)
@@ -721,11 +759,11 @@ export default function TokenDashboardPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold font-mono">
-                  {(analytics?.bondingCurveProgress || 0).toFixed(1)}%
+                  {analytics?.bondingCurveProgress !== undefined ? `${analytics.bondingCurveProgress.toFixed(1)}%` : "—"}
                 </div>
-                <Progress value={analytics?.bondingCurveProgress || 0} className="h-2 mt-2" />
+                {analytics?.bondingCurveProgress !== undefined && <Progress value={analytics.bondingCurveProgress} className="h-2 mt-2" />}
                 <p className="text-xs text-muted-foreground mt-1">
-                  Target: ${formatNumber(analytics?.bondingCurveTarget || 69000)}
+                  {analytics?.bondingCurveTarget !== undefined ? `Target: $${formatNumber(analytics.bondingCurveTarget)}` : "Target unavailable"}
                 </p>
               </>
             )}
@@ -845,7 +883,7 @@ export default function TokenDashboardPage() {
                           <Button
                             variant="destructive"
                             className="w-full"
-                            disabled={burnLpMutation.isPending || !isLpBurnAmountValid}
+                            disabled={burnLpMutation.isPending || !isLpBurnAmountValid || !transactionsEnabled}
                             data-testid="button-burn-lp"
                           >
                             {burnLpMutation.isPending ? "Burning..." : "Burn LP Tokens"}
@@ -874,6 +912,7 @@ export default function TokenDashboardPage() {
                             <AlertDialogCancel data-testid="button-burn-lp-cancel">Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => burnLpMutation.mutate()}
+                              disabled={burnLpMutation.isPending || !transactionsEnabled}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               data-testid="button-burn-lp-confirm"
                             >
@@ -1003,10 +1042,14 @@ export default function TokenDashboardPage() {
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <Label>Auto-Claim</Label>
+                  <div>
+                    <Label>Auto-claim monitoring</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">This setting monitors claim availability; it does not execute claims automatically.</p>
+                  </div>
                   <Switch
                     checked={feeInfo.deployment.autoClaimEnabled}
-                    onCheckedChange={(checked) => toggleAutoClaimMutation.mutate(checked)}
+                    onCheckedChange={(checked) => { if (!checked || transactionsEnabled) toggleAutoClaimMutation.mutate(checked); }}
+                    disabled={(!transactionsEnabled && !feeInfo.deployment.autoClaimEnabled) || toggleAutoClaimMutation.isPending}
                     data-testid="switch-autoclaim"
                   />
                 </div>
@@ -1014,15 +1057,18 @@ export default function TokenDashboardPage() {
                   className="w-full" 
                   variant="outline"
                   onClick={() => window.open(`https://pump.fun/coin/${deployment.tokenAddress}`, '_blank')}
+                  disabled={!transactionsEnabled}
                   data-testid="button-claim-fees-pumpfun"
                 >
                   <Zap className="h-4 w-4 mr-2" />
                   Claim on Pump.fun
                 </Button>
                 <p className="text-xs text-muted-foreground text-center mt-2">
-                  Fee claiming requires pump.fun website
+                  Claims must be completed on Pump.fun. KiaraFun does not execute creator-fee claims.
                 </p>
               </>
+            ) : feeError ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center text-sm text-muted-foreground"><AlertTriangle className="h-7 w-7 text-destructive" /><p>Fee data unavailable. This is not a zero-fee balance.</p><Button variant="outline" onClick={() => refetchFees()}>Retry</Button></div>
             ) : (
               <p className="text-center text-muted-foreground py-4">No fee data</p>
             )}
@@ -1191,6 +1237,6 @@ export default function TokenDashboardPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

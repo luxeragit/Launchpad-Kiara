@@ -16,6 +16,10 @@ import { SiX, SiTelegram } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Wallet as WalletType, TradeSetting, TokenHolding } from "@shared/schema";
+import { useNetworkStatus } from "@/hooks/use-network-status";
+import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import { WalletConnectButton } from "@/components/wallet-connect-button";
 
 interface PumpfunToken {
   mint: string;
@@ -110,6 +114,7 @@ function TokenImage({ src, symbol, size = "md" }: { src: string | null; symbol: 
 }
 
 function formatMarketCap(mcSol: number, solPrice: number): string {
+  if (!solPrice || !mcSol) return "—";
   const mcUsd = mcSol * solPrice;
   if (mcUsd >= 1000000) return `$${(mcUsd / 1000000).toFixed(2)}M`;
   if (mcUsd >= 1000) return `$${(mcUsd / 1000).toFixed(2)}K`;
@@ -123,8 +128,8 @@ function formatVolume(volume: number): string {
 }
 
 function FeaturedCard({ token, solPrice, onClick }: { token: PumpfunToken; solPrice: number; onClick: () => void }) {
-  const priceChange = token.priceChange || 0;
-  const isPositive = priceChange >= 0;
+  const priceChange = token.priceChange;
+  const isPositive = priceChange !== undefined && priceChange >= 0;
   
   return (
     <div 
@@ -140,9 +145,9 @@ function FeaturedCard({ token, solPrice, onClick }: { token: PumpfunToken; solPr
             <p className="text-xs text-muted-foreground" data-testid={`text-featured-symbol-${token.mint}`}>{token.symbol}</p>
           </div>
         </div>
-        <div className={`flex items-center gap-1 text-xs ${isPositive ? "text-green-500" : "text-red-500"}`} data-testid={`text-featured-change-${token.mint}`}>
-          <TrendingUp className={`h-3 w-3 ${!isPositive && "rotate-180"}`} />
-          {isPositive ? "+" : ""}{priceChange.toFixed(2)}%
+        <div className={`flex items-center gap-1 text-xs ${priceChange === undefined ? "text-muted-foreground" : isPositive ? "text-green-500" : "text-red-500"}`} data-testid={`text-featured-change-${token.mint}`}>
+          {priceChange !== undefined && <TrendingUp className={`h-3 w-3 ${!isPositive && "rotate-180"}`} />}
+          {priceChange !== undefined ? `${isPositive ? "+" : ""}${priceChange.toFixed(2)}%` : "Change unavailable"}
         </div>
       </div>
       <div className="flex items-center justify-between text-xs">
@@ -168,7 +173,7 @@ function TrendingCard({ token, solPrice, onClick }: { token: PumpfunToken; solPr
     >
       <div className="flex items-center justify-between mb-2">
         <TokenImage src={token.image} symbol={token.symbol} size="lg" />
-        <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()} data-testid={`button-menu-${token.mint}`}>
+        <Button size="icon" variant="ghost" aria-label={`Open ${token.name}`} onClick={(e) => { e.stopPropagation(); onClick(); }} data-testid={`button-menu-${token.mint}`}>
           <MoreVertical className="h-4 w-4" />
         </Button>
       </div>
@@ -209,8 +214,8 @@ function TokenListItem({
   formatTimeAgo: (ts: number) => string;
   copyToClipboard: (text: string, label: string) => void;
 }) {
-  const priceChange = token.priceChange || 0;
-  const isPositive = priceChange >= 0;
+  const priceChange = token.priceChange;
+  const isPositive = priceChange !== undefined && priceChange >= 0;
   
   return (
     <div 
@@ -290,8 +295,8 @@ function TokenListItem({
         </div>
         <div className="text-right min-w-[60px]">
           <p className="text-xs text-muted-foreground">Change</p>
-          <p className={`font-semibold ${isPositive ? "text-green-500" : "text-red-500"}`} data-testid={`text-token-change-${token.mint}`}>
-            {isPositive ? "+" : ""}{priceChange.toFixed(1)}%
+            <p className={`font-semibold ${priceChange === undefined ? "text-muted-foreground" : isPositive ? "text-green-500" : "text-red-500"}`} data-testid={`text-token-change-${token.mint}`}>
+            {priceChange !== undefined ? `${isPositive ? "+" : ""}${priceChange.toFixed(1)}%` : "—"}
           </p>
         </div>
       </div>
@@ -312,6 +317,8 @@ function TokenListItem({
 }
 
 export default function MonitorPage() {
+  const [location] = useLocation();
+  const isAutomationWorkspace = location === "/monitor";
   const [solAmount, setSolAmount] = useState("0.1");
   const [autoRedirect, setAutoRedirect] = useState(false);
   const [selectedWallets, setSelectedWallets] = useState<string[]>([]);
@@ -328,19 +335,23 @@ export default function MonitorPage() {
   const [autoSellEnabled, setAutoSellEnabled] = useState(false);
   const [takeProfitPercent, setTakeProfitPercent] = useState("");
   const [stopLossPercent, setStopLossPercent] = useState("");
-  const [solPrice, setSolPrice] = useState(200);
+  const [solPrice, setSolPrice] = useState(0);
   const [searchMint, setSearchMint] = useState("");
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<"explore" | "newest" | "trending" | "movers">("newest");
   const [timeFilter, setTimeFilter] = useState<"5M" | "1H" | "6H" | "24H">("24H");
-  const [migratedOnly, setMigratedOnly] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(isAutomationWorkspace);
   
   const trendingScrollRef = useRef<HTMLDivElement>(null);
   
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    setShowSettings(isAutomationWorkspace);
+  }, [isAutomationWorkspace]);
 
   useEffect(() => {
     const fetchSolPrice = async () => {
@@ -352,9 +363,7 @@ export default function MonitorPage() {
             setSolPrice(data.solana.usd);
           }
         }
-      } catch (error) {
-        console.log("Failed to fetch SOL price, using default");
-      }
+      } catch {}
     };
     fetchSolPrice();
     const interval = setInterval(fetchSolPrice, 60000);
@@ -373,9 +382,9 @@ export default function MonitorPage() {
     }
   }, []);
 
-  const handleSearch = async () => {
-    const mint = searchMint.trim();
-    if (!mint || mint.length < 32) {
+  const handleSearch = async (requestedMint?: string) => {
+    const mint = (requestedMint ?? searchMint).trim();
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)) {
       toast({ title: "Invalid mint address", description: "Please enter a valid Solana token mint address", variant: "destructive" });
       return;
     }
@@ -384,7 +393,7 @@ export default function MonitorPage() {
     setSearchResult(null);
     
     try {
-      const res = await fetch(`/api/tokens/search/${mint}`);
+      const res = await fetch(`/api/tokens/search/${encodeURIComponent(mint)}`, { credentials: "include" });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Token not found");
@@ -399,20 +408,41 @@ export default function MonitorPage() {
     }
   };
 
-  const { data: wallets, isLoading } = useQuery<WalletType[]>({
+  useEffect(() => {
+    const mint = new URLSearchParams(window.location.search).get("mint");
+    if (mint) {
+      setSearchMint(mint);
+      void handleSearch(mint);
+    }
+    const onMintSearch = (event: Event) => {
+      const requested = (event as CustomEvent<string>).detail;
+      setSearchMint(requested);
+      void handleSearch(requested);
+    };
+    window.addEventListener("kiara:mint-search", onMintSearch);
+    return () => window.removeEventListener("kiara:mint-search", onMintSearch);
+  }, []);
+
+  const network = useNetworkStatus();
+  const transactionsEnabled = !!network.data?.transactionsEnabled && !network.isError;
+
+  const { data: wallets, isLoading, isError: walletsError, refetch: refetchWallets } = useQuery<WalletType[]>({
     queryKey: ["/api/wallets"],
+    enabled: isAuthenticated,
   });
 
   const { data: tradeSettings } = useQuery<TradeSetting>({
     queryKey: ["/api/trade/settings"],
+    enabled: isAuthenticated,
   });
 
   const { data: monitoringStatus, refetch: refetchStatus } = useQuery<MonitoringStatus>({
     queryKey: ["/api/monitoring/status"],
+    enabled: isAuthenticated,
     refetchInterval: 2000,
   });
 
-  const { data: pumpfunData, isLoading: isLoadingTokens } = useQuery<PumpfunResponse>({
+  const { data: pumpfunData, isLoading: isLoadingTokens, isError: feedError, refetch: refetchFeed } = useQuery<PumpfunResponse>({
     queryKey: ["/api/pumpfun/tokens"],
     refetchInterval: 3000,
   });
@@ -429,6 +459,7 @@ export default function MonitorPage() {
 
   const { data: holdings, isLoading: isLoadingHoldings } = useQuery<TokenHolding[]>({
     queryKey: ["/api/holdings"],
+    enabled: isAuthenticated,
     refetchInterval: 5000,
   });
 
@@ -455,7 +486,14 @@ export default function MonitorPage() {
 
   const saveSettingsMutation = useMutation({
     mutationFn: async (settings: Partial<TradeSetting>) => {
-      const res = await apiRequest("PUT", "/api/trade/settings", settings);
+      if (!isAuthenticated) throw new Error("Connect your wallet to save automation settings.");
+      const safeSettings = { ...settings };
+      if (!transactionsEnabled && safeSettings.autoSellEnabled) {
+        safeSettings.autoSellEnabled = false;
+        setAutoSellEnabled(false);
+        toast({ title: "Auto-sell turned off", description: "Network safety is unverified. Other non-financial settings can still be saved." });
+      }
+      const res = await apiRequest("PUT", "/api/trade/settings", safeSettings);
       return res.json();
     },
     onSuccess: () => {
@@ -469,6 +507,8 @@ export default function MonitorPage() {
 
   const startMonitoringMutation = useMutation({
     mutationFn: async () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to start monitoring.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       await saveSettingsMutation.mutateAsync({
         solAmount: parseFloat(solAmount) || 0.1,
         autoRedirect,
@@ -495,6 +535,7 @@ export default function MonitorPage() {
 
   const stopMonitoringMutation = useMutation({
     mutationFn: async () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to stop monitoring.");
       const res = await apiRequest("POST", "/api/monitoring/stop", {});
       return res.json();
     },
@@ -527,6 +568,8 @@ export default function MonitorPage() {
 
   const sellTokenMutation = useMutation({
     mutationFn: async (holdingId: string) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to sell a token.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       const res = await apiRequest("POST", `/api/holdings/${holdingId}/sell`, {});
       return res.json();
     },
@@ -541,6 +584,8 @@ export default function MonitorPage() {
 
   const buyTokenMutation = useMutation({
     mutationFn: async (params: { walletId: string; tokenMint: string; solAmount: number; tokenName: string; tokenSymbol: string; tokenImage: string | null }) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to buy a token.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       const res = await apiRequest("POST", "/api/trade/buy", params);
       return res.json();
     },
@@ -614,68 +659,57 @@ export default function MonitorPage() {
   };
 
   const activeHoldings = holdings?.filter(h => h.status === "holding") || [];
-  const featuredTokens = trendingData?.tokens?.slice(0, 6) || [];
+  const featureWindowMs = ({ "5M": 5, "1H": 60, "6H": 360, "24H": 1440 }[timeFilter] * 60_000);
+  const featuredTokens = trendingData?.tokens?.filter(token => Date.now() - token.timestamp <= featureWindowMs).slice(0, 6) || [];
   const trendingTokens = moversData?.tokens?.slice(0, 8) || [];
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b bg-card/50 px-6 py-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="flex h-full min-w-0 flex-col">
+      <div className="border-b bg-card/50 px-4 py-4 sm:px-6">
+        <div className="flex min-w-0 items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold" data-testid="text-monitor-title">Monitor</h1>
+            <div><p className="mb-1 text-[10px] font-semibold uppercase tracking-[.16em] text-primary">{isAutomationWorkspace ? "Execution desk" : "Market watch"}</p><h1 className="font-display text-2xl font-semibold" data-testid="text-monitor-title">{isAutomationWorkspace ? "Automation" : "Explore"}</h1></div>
+            <p className="hidden text-sm text-muted-foreground md:block">{isAutomationWorkspace ? "Saved filters, automation status, and open positions." : "Find a token in the live feed, then inspect it before trading."}</p>
             <div className="flex items-center gap-2">
               <Circle className={`h-2 w-2 ${pumpfunData?.connected ? "fill-green-500 text-green-500" : "fill-muted text-muted"}`} data-testid="status-connection-indicator" />
               <span className="text-xs text-muted-foreground" data-testid="text-connection-status">
-                {pumpfunData?.connected ? "Live" : "Connecting..."}
+                {feedError ? "Feed unavailable" : pumpfunData?.connected ? "Live" : isLoadingTokens ? "Connecting…" : "Feed idle"}
               </span>
             </div>
             <Badge variant="outline" className="font-mono" data-testid="badge-sol-price">
-              SOL ${solPrice.toFixed(2)}
+              SOL {solPrice ? `$${solPrice.toFixed(2)}` : "Price unavailable"}
             </Badge>
           </div>
           
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by mint address..."
-                value={searchMint}
-                onChange={(e) => setSearchMint(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-9 w-[300px]"
-                data-testid="input-search-mint"
-              />
-            </div>
-            <Button 
-              onClick={handleSearch} 
-              disabled={isSearching}
-              data-testid="button-search-token"
-            >
-              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
-            </Button>
             <Button 
               variant="outline" 
               onClick={() => setShowSettings(!showSettings)}
               data-testid="button-toggle-settings"
             >
               <Filter className="h-4 w-4 mr-2" />
-              Settings
+                {isAutomationWorkspace ? "Hide settings" : "Automation"}
             </Button>
           </div>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
+      <ScrollArea className="min-w-0 w-full max-w-full flex-1 overflow-hidden">
+        <div className="monitor-content space-y-6">
+          {!authLoading && !isAuthenticated && <Card className="min-w-0 max-w-full border-primary/25 bg-primary/[.035]"><CardContent className="flex w-full min-w-0 flex-col items-stretch justify-between gap-4 p-4 sm:flex-row sm:items-center"><div className="flex w-full min-w-0 items-start gap-3"><Wallet className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div className="min-w-0"><p className="font-semibold">{isAutomationWorkspace ? "Connect to load your private automation workspace" : "Public discovery · private tools when you connect"}</p><p className="mt-1 break-words text-sm text-muted-foreground">{isAutomationWorkspace ? "Wallets, saved monitoring settings, and positions are private to your signed-in session. Your settings remain editable after connecting." : "Explore the live token feed below without signing in. Connect only when you are ready to access wallets or configure automation."}</p></div></div><WalletConnectButton /></CardContent></Card>}
+          {feedError && <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><div><p className="font-semibold">Token feed unavailable</p><p className="text-sm text-muted-foreground">The data source could not be reached. This is not a zero-token result.</p></div><Button variant="outline" onClick={() => refetchFeed()}>Retry feed</Button></CardContent></Card>}
           {showSettings && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Filter className="h-4 w-4" />
-                  Trading Settings
+                  Automation controls
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <p className="rounded-md border border-amber-500/25 bg-amber-500/[.06] px-3 py-2 text-xs text-muted-foreground">
+                  Auto-buy and auto-sell can submit real transactions when enabled. Review the active network, selected wallet, and limits before starting.
+                </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <Label className="text-xs">SOL Amount</Label>
@@ -715,15 +749,17 @@ export default function MonitorPage() {
                       className="w-full mt-1 h-9 rounded-md border border-border bg-background px-3 text-sm"
                       value={selectedWallets[0] || ""}
                       onChange={(e) => setSelectedWallets(e.target.value ? [e.target.value] : [])}
+                      disabled={!isAuthenticated}
                       data-testid="select-wallet"
                     >
-                      <option value="">Select wallet...</option>
+                      <option value="">{!isAuthenticated ? "Connect to load wallets…" : walletsError ? "Wallet list unavailable" : isLoading ? "Loading wallets…" : "Select wallet…"}</option>
                       {wallets?.filter(w => !w.isArchived).map(wallet => (
                         <option key={wallet.id} value={wallet.id}>
                           {wallet.label || wallet.address.slice(0, 8)}... ({wallet.balance?.toFixed(2) || 0} SOL)
                         </option>
                       ))}
                     </select>
+                    {isAuthenticated && walletsError && <Button type="button" variant="ghost" size="sm" className="px-0" onClick={() => refetchWallets()}>Retry wallet list</Button>}
                   </div>
                 </div>
                 
@@ -759,7 +795,9 @@ export default function MonitorPage() {
                     <Switch 
                       id="autosell" 
                       checked={autoSellEnabled}
-                      onCheckedChange={setAutoSellEnabled}
+                      onCheckedChange={(enabled) => {
+                        if (!enabled || transactionsEnabled) setAutoSellEnabled(enabled);
+                      }}
                       data-testid="switch-auto-sell"
                     />
                     <Label htmlFor="autosell" className="text-xs">Auto-Sell</Label>
@@ -810,7 +848,7 @@ export default function MonitorPage() {
                     <Button 
                       variant="secondary"
                       onClick={() => startMonitoringMutation.mutate()}
-                      disabled={startMonitoringMutation.isPending || selectedWallets.length === 0}
+                      disabled={!isAuthenticated || startMonitoringMutation.isPending || selectedWallets.length === 0 || !transactionsEnabled}
                       data-testid="button-start-autobuy"
                     >
                       Start Auto-Buy
@@ -827,20 +865,22 @@ export default function MonitorPage() {
             </Card>
           )}
 
-          {activeHoldings.length > 0 && (
+          {isAuthenticated && (activeHoldings.length > 0 || isAutomationWorkspace) && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Coins className="h-4 w-4 text-primary" />
-                  Active Holdings ({activeHoldings.length})
+                  Open positions ({activeHoldings.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                {isLoadingHoldings ? <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14" />)}</div> : activeHoldings.length === 0 ? (
+                  <p className="py-5 text-center text-sm text-muted-foreground">No active positions are available.</p>
+                ) : <div className="space-y-2">
                   {activeHoldings.map((holding) => {
-                    const pnl = holding.currentPrice && holding.buyPrice 
-                      ? ((holding.currentPrice - holding.buyPrice) / holding.buyPrice) * 100 
-                      : 0;
+                    const pnl = holding.currentPrice && holding.buyPrice
+                      ? ((holding.currentPrice - holding.buyPrice) / holding.buyPrice) * 100
+                      : undefined;
                     return (
                       <div 
                         key={holding.id}
@@ -854,14 +894,14 @@ export default function MonitorPage() {
                             Buy: {holding.buyPrice?.toFixed(8)} SOL
                           </p>
                         </div>
-                        <div className={`text-sm font-semibold ${pnl >= 0 ? "text-green-500" : "text-red-500"}`} data-testid={`text-holding-pnl-${holding.id}`}>
-                          {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%
+                        <div className={`text-sm font-semibold ${pnl === undefined ? "text-muted-foreground" : pnl >= 0 ? "text-green-500" : "text-red-500"}`} data-testid={`text-holding-pnl-${holding.id}`}>
+                          {pnl !== undefined ? `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%` : "P&L unavailable"}
                         </div>
                         <Button
                           size="sm"
                           variant="destructive"
                           onClick={() => sellTokenMutation.mutate(holding.id)}
-                          disabled={sellTokenMutation.isPending}
+                      disabled={sellTokenMutation.isPending || !transactionsEnabled || !isAuthenticated}
                           data-testid={`button-sell-holding-${holding.id}`}
                         >
                           Sell
@@ -869,20 +909,22 @@ export default function MonitorPage() {
                       </div>
                     );
                   })}
-                </div>
+                </div>}
               </CardContent>
             </Card>
           )}
 
+          {!isAutomationWorkspace && <>
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Featured</h2>
-              <div className="flex items-center gap-2">
+            <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <h2 className="font-display text-lg font-semibold">Featured</h2>
+              <div className="flex w-full min-w-0 max-w-full items-center justify-start gap-2 sm:w-auto sm:justify-end">
                 <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                   {(["5M", "1H", "6H", "24H"] as const).map((t) => (
                     <Button
                       key={t}
                       size="sm"
+                      className="px-2"
                       variant={timeFilter === t ? "secondary" : "ghost"}
                       onClick={() => setTimeFilter(t)}
                       data-testid={`button-time-filter-${t.toLowerCase()}`}
@@ -894,15 +936,10 @@ export default function MonitorPage() {
               </div>
             </div>
             
-            <div className="overflow-hidden">
-              <div 
-                className="flex gap-4 py-2 animate-marquee"
-                style={{ 
-                  animation: featuredTokens.length > 0 ? "marquee 30s linear infinite" : "none",
-                  width: "max-content"
-                }}
-              >
-                {featuredTokens.length > 0 ? (
+            <div className="w-full min-w-0 overflow-hidden">
+              <div className="flex w-full min-w-0 gap-4 overflow-x-auto py-2">
+                {isLoadingTokens ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[120px] min-w-[200px] shrink-0 rounded-xl" />) :
+                  featuredTokens.length > 0 ? (
                   <>
                     {featuredTokens.map((token) => (
                       <FeaturedCard 
@@ -912,27 +949,15 @@ export default function MonitorPage() {
                         onClick={() => handleTokenClick(token)}
                       />
                     ))}
-                    {featuredTokens.map((token) => (
-                      <FeaturedCard 
-                        key={`${token.mint}-dup`} 
-                        token={token} 
-                        solPrice={solPrice}
-                        onClick={() => handleTokenClick(token)}
-                      />
-                    ))}
                   </>
-                ) : (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="min-w-[200px] h-[120px] rounded-xl flex-shrink-0" />
-                  ))
-                )}
+                ) : <div className="flex min-h-[120px] w-full items-center rounded-md border border-dashed px-4 text-sm text-muted-foreground">{feedError ? "Featured feed unavailable." : "No featured tokens in this time window."}</div>}
               </div>
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
+            <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
                   Trending
@@ -942,7 +967,7 @@ export default function MonitorPage() {
                   Top Movers
                 </h2>
               </div>
-              <Button variant="ghost" className="text-primary" data-testid="button-view-all-trending">
+              <Button variant="ghost" className="text-primary" onClick={() => setActiveTab("trending")} data-testid="button-view-all-trending">
                 View All
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -951,10 +976,11 @@ export default function MonitorPage() {
             <div className="relative">
               <div 
                 ref={trendingScrollRef}
-                className="flex gap-4 overflow-x-auto scrollbar-hide py-2"
+                className="flex min-w-0 gap-4 overflow-x-auto scrollbar-hide py-2"
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
-                {trendingTokens.length > 0 ? (
+                {isLoadingTokens ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[140px] min-w-[180px] shrink-0 rounded-xl" />) :
+                  trendingTokens.length > 0 ? (
                   trendingTokens.map((token) => (
                     <TrendingCard 
                       key={token.mint} 
@@ -963,15 +989,10 @@ export default function MonitorPage() {
                       onClick={() => handleTokenClick(token)}
                     />
                   ))
-                ) : (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className="min-w-[180px] h-[140px] rounded-xl flex-shrink-0" />
-                  ))
-                )}
+                ) : <div className="flex min-h-[140px] min-w-[220px] items-center rounded-md border border-dashed px-4 text-sm text-muted-foreground">{feedError ? "Market activity unavailable." : "No recent market activity."}</div>}
               </div>
             </div>
           </div>
-
           <div>
             <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
               <div className="flex items-center gap-2">
@@ -994,18 +1015,6 @@ export default function MonitorPage() {
                 ))}
               </div>
               
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="migratedOnly"
-                  checked={migratedOnly}
-                  onCheckedChange={setMigratedOnly}
-                  data-testid="switch-migrated-only"
-                />
-                <Label htmlFor="migratedOnly" className="text-sm flex items-center gap-1">
-                  <Sparkles className="h-4 w-4" />
-                  Migrated Only
-                </Label>
-              </div>
             </div>
             
             <div className="space-y-3">
@@ -1013,6 +1022,8 @@ export default function MonitorPage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-20 w-full rounded-xl" />
                 ))
+              ) : feedError ? (
+                <div className="rounded-md border border-destructive/25 px-4 py-8 text-center text-sm text-muted-foreground">Feed unavailable. Use Retry feed above to try again.</div>
               ) : getActiveTokens().length > 0 ? (
                 getActiveTokens().map((token) => (
                   <TokenListItem
@@ -1022,7 +1033,7 @@ export default function MonitorPage() {
                     onClick={() => handleTokenClick(token)}
                     onBuy={() => handleQuickBuy(token)}
                     isBuying={buyTokenMutation.isPending}
-                    canBuy={selectedWallets.length > 0}
+                      canBuy={isAuthenticated && selectedWallets.length > 0 && transactionsEnabled}
                     formatTimeAgo={formatTimeAgo}
                     copyToClipboard={copyToClipboard}
                   />
@@ -1030,12 +1041,13 @@ export default function MonitorPage() {
               ) : (
                 <div className="text-center py-12">
                   <Zap className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">No tokens yet</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">Tokens will appear here in real-time</p>
+                  <p className="text-sm text-muted-foreground">No tokens in this feed right now</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Try another feed tab or check back shortly.</p>
                 </div>
               )}
             </div>
           </div>
+          </>}
         </div>
       </ScrollArea>
 

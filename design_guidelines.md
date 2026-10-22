@@ -1,127 +1,58 @@
-# Zapera Design Guidelines
+# KiaraFun design guidelines
 
-## Design Approach
-**Hybrid Approach**: Crypto dashboard aesthetic drawing from platforms like Phantom, Solflare, and trading dashboards (Binance, Coinbase Pro), combined with modern design system principles for data-dense interfaces.
+## Identity
 
-## Core Design Principles
-- **Data Clarity**: Information hierarchy optimized for quick scanning of wallet balances, transaction data
-- **Action Confidence**: Clear visual feedback for high-stakes operations (transfers, deployments)
-- **Crypto Aesthetic**: Dark mode with glowing accents, technical precision, futuristic feel
+KiaraFun is an anime-inspired Solana trading playground, not a promotional
+landing page. Preserve a fast, information-dense product experience. All visible
+copy is concise English.
 
-## Typography
-**Fonts**: 
-- Primary: JetBrains Mono - terminal/hacker aesthetic throughout the entire application
-- All text uses monospace fonts for a consistent crypto-terminal feel
+The canonical character is the user-supplied blonde schoolgirl with bright blue
+eyes, a red ribbon, sailor uniform, and sky background. Use the original artwork,
+not generated substitutes. Use it selectively for identity and onboarding.
+Do not create new tokens, tickers, official social links, or financial products.
 
-**Hierarchy**:
-- Hero/Section Headers: text-2xl to text-4xl, font-bold
-- Subsections: text-lg, font-semibold
-- Body: text-sm to text-base, font-normal
-- Data/Numbers: text-base, font-mono for addresses/keys
-- Labels: text-xs, uppercase, tracking-wide, text-gray-400
+## Theme and typography
 
-## Layout System
-**Spacing Primitives**: Tailwind units of 2, 4, 6, 8, 12, 16, 24
-- Component padding: p-4 to p-6
-- Section spacing: gap-6 to gap-8
-- Container padding: px-6 py-8 (mobile), px-8 py-12 (desktop)
+- Light first: off-white canvas, white surfaces, sky-blue accents, navy text,
+  subtle blue-gray borders.
+- Dark mode: midnight/navy surfaces with readable blue accents; persist the
+  user's explicit theme choice.
+- Sora for headings and brand, DM Sans for interface copy, IBM Plex Mono for
+  addresses and financial figures. Use real font assets and tabular numerals.
+- Coral is restrained branding or a clearly labeled danger signal, not arbitrary
+  decoration. No neon borders, excessive gradients, oversized blank heroes,
+  decorative charts, stock anime art, or emoji.
 
-**Grid Structure**:
-- Max-width container: max-w-7xl mx-auto
-- Dashboard layout: Sidebar navigation (w-64) + main content area
-- Table layouts: Full-width with horizontal scroll on mobile
+## Structure
 
-## Component Library
+Keep Explore, Create, My Tokens, Wallets, and Monitor easy to reach.
+Keep `/`, `/deploy`, `/deploy/:id`, `/wallets`, and `/docs` working.
+Use compact desktop navigation and usable mobile navigation. Avoid permanent
+oversized sidebars and stacked navigation bars. Forms, dialogs, token details,
+tables, and financial controls must remain usable at 375px width.
 
-**Navigation**:
-- Vertical sidebar with Zapera logo at top
-- Navigation items with icon + label
-- Active state: background accent with subtle glow effect
-- Sections: Monitor, Deploy, Wallets
+## Financial clarity
 
-**Data Tables** (Wallet Management):
-- Zebra striping for row readability
-- Fixed header on scroll
-- Action buttons: icon-only in compact view
-- Monospace font for addresses
-- Hover state reveals full address/key
+Always distinguish unknown/loading/missing values from genuine zero. Do not
+fabricate price movement, balances, token history, or execution states.
+Show network status honestly and pause unsafe financial execution. A click or a
+saved pending deployment is not a confirmed blockchain transaction.
+Retain explicit review/confirmation for destructive operations and private-key
+reveal/export. Never expose private keys by default or in logs/screenshots.
 
-**Form Elements** (Token Deploy):
-- Large, touch-friendly inputs with h-12 minimum
-- Clear label positioning above inputs
-- Upload zones with drag-and-drop visual feedback
-- Platform selector: Card-based selection with visual differentiation
-- Mode toggle (Normal/Mayhem): Switch component with clear active state
+## Interaction and accessibility
 
-**Buttons**:
-- Primary actions: Solid with brand accent
-- Secondary: Outline or ghost style
-- Danger actions (Transfer, Burn): Red accent with confirmation
-- Icon buttons: Consistent sizing (h-10 w-10)
+Use semantic labels, keyboard-operable navigation, visible focus, readable
+contrast, adequate touch targets, and contained dialog scrolling. Keep motion
+short and respect reduced-motion preferences. No placeholder controls.
 
-**Cards**:
-- Wallet cards: rounded-lg border with subtle shadow
-- Balance display: Large numeric emphasis with SOL suffix
-- Status indicators: Small badges (Active/Inactive)
+Preserve existing query keys, API payloads, cache invalidation, saved settings,
+wallet authentication, and transaction logic. Never trade functional coverage
+for visual simplification.
 
-**Modals/Dialogs**:
-- Create/Import wallet: Centered modal with backdrop blur
-- Transaction confirmations: Clear summary before execution
-- Warning dialogs for private key exposure
+## Verification
 
-## Visual Design
-
-**Dark Theme Foundation**:
-- Background: Very dark blue-gray (#0a0e1a to #0f1419)
-- Surface: Slightly lighter (#1a1f2e to #1e2433)
-- Borders: Subtle cyan/blue tint (#2a3548)
-
-**Accent Colors**:
-- Primary accent: Soft Green (HSL 150 50% 45%) - buttons, links, active states
-- Secondary accent: Red #FF4444 (warnings, destructive actions)
-- Success: Soft green for confirmations
-- Warning: Amber for caution states
-
-**Data Visualization**:
-- Balance displays: Large, bold numbers with subtle color coding
-- Status indicators: Small colored dots (green = active, gray = inactive)
-- Progress indicators: Linear bars for multi-step processes
-
-## Animations
-**Minimal & Purposeful**:
-- Page transitions: Fade in content (200ms)
-- Balance updates: Number counting animation when refreshing
-- Success feedback: Checkmark animation on transaction completion
-- Loading states: Subtle spinner, never block entire interface
-
-## Images
-**Logo Integration**:
-- Favicon: Provided anime character logo
-- Sidebar header: Logo + "Zapera" wordmark
-- Empty states: Simplified icon versions
-
-**No Hero Images**: This is a dashboard application - prioritize immediate access to tools over marketing visuals
-
-## Key Screens Layout
-
-**Trade Monitor**:
-- Top: SOL amount input + Auto-redirect toggle
-- Middle: Wallet selection grid (checkboxes with balance preview)
-- Bottom: Selected count + Execute button
-
-**Deploy**:
-- Multi-step wizard (3 steps with progress indicator)
-- Platform cards: Visual differentiation between Pump.fun, Bonk.fun, Meteora
-- Form fields in single column for focus
-
-**Wallets**:
-- Action toolbar: Row of icon buttons (New, Import, Refresh, etc.)
-- Full-width table with columns: Label, Address, Balance, Actions
-- Empty state: Clear call-to-action to create first wallet
-
-## Accessibility
-- High contrast ratios for readability
-- Keyboard navigation for all actions
-- Clear focus indicators with brand accent
-- Confirmation dialogs for destructive actions
-- Monospace fonts ensure address readability
+Run TypeScript and production build. Inspect real browser screenshots across
+desktop/tablet/mobile and both themes. Test interactions non-destructively.
+Disclose anything not verified, especially wallet-provider and live on-chain
+execution. See `docs/kiarafun-preservation.md`.

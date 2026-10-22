@@ -12,17 +12,16 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Activity, Rocket, Wallet, ExternalLink, FileText } from "lucide-react";
-import logoPath from "@assets/2026-01-03_16.36.50_1767443824559.jpg";
 
 const navItems = [
   {
-    title: "Monitor",
+    title: "Explore",
     url: "/",
     icon: Activity,
     description: "Trade monitoring",
   },
   {
-    title: "Deploy",
+    title: "Create",
     url: "/deploy",
     icon: Rocket,
     description: "Token deployment",
@@ -43,13 +42,13 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <Link href="/" className="flex items-center gap-3" data-testid="link-logo">
           <img
-            src={logoPath}
-            alt="Pyre Market"
+            src="/kiara.png"
+            alt="KiaraFun"
             className="h-10 w-10 rounded-full object-cover"
           />
           <div className="flex flex-col">
             <span className="text-lg font-semibold tracking-tight">
-              Pyre Market
+              KiaraFun
             </span>
             <span className="text-xs text-muted-foreground">
               Solana Trading Dashboard

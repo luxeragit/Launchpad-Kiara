@@ -4,6 +4,7 @@ import { sellTokenOnRaydium, getTokenDecimals } from "./raydium-api";
 import { decrypt } from "./crypto";
 import { getTokenPrice, getBatchPrices } from "./price-service";
 import type { TokenHolding, TradeSetting } from "@shared/schema";
+import { getNetworkStatus } from "./network-safety";
 
 export interface AutoSellResult {
   holdingId: string;
@@ -43,6 +44,13 @@ export async function executeSell(
   holding: TokenHolding,
   reason: "take_profit" | "stop_loss" | "manual"
 ): Promise<AutoSellResult> {
+  const network = await getNetworkStatus();
+  if (!network.transactionsEnabled) {
+    return {
+      holdingId: holding.id, tokenSymbol: holding.tokenSymbol,
+      result: { success: false, error: network.reason }, reason,
+    };
+  }
   console.log(`[AutoSell] Executing ${reason} sell for ${holding.tokenSymbol}`);
 
   const wallet = await storage.internal_getWalletUnsafe(holding.walletId!);

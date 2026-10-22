@@ -25,3 +25,4 @@ secrets/
 # System files
 .DS_Store
 *.log
+/generated-artifacts/

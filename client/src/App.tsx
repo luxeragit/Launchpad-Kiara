@@ -12,13 +12,17 @@ import DeployPage from "@/pages/deploy";
 import WalletsPage from "@/pages/wallets";
 import TokenDashboardPage from "@/pages/token-dashboard";
 import DocsPage from "@/pages/docs";
+import MyTokensPage from "@/pages/my-tokens";
+import { NetworkStatus } from "@/components/network-status";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={MonitorPage} />
+      <Route path="/monitor" component={MonitorPage} />
       <Route path="/deploy" component={DeployPage} />
       <Route path="/deploy/:id" component={TokenDashboardPage} />
+      <Route path="/my-tokens" component={MyTokensPage} />
       <Route path="/wallets" component={WalletsPage} />
       <Route path="/docs" component={DocsPage} />
       <Route component={NotFound} />
@@ -28,17 +32,19 @@ function Router() {
 
 function App() {
   useEffect(() => {
-    document.documentElement.classList.add("dark");
-    localStorage.setItem("theme", "dark");
+    const stored = localStorage.getItem("theme");
+    const theme = stored === "dark" || stored === "light" ? stored : "light";
+    document.documentElement.classList.toggle("dark", theme === "dark");
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <div className="flex flex-col min-h-screen w-full">
+          <div className="app-shell flex flex-col w-full">
             <Navbar />
-            <main className="flex-1 overflow-auto">
+            <NetworkStatus />
+            <main className="flex-1 min-w-0">
               <Router />
             </main>
 

@@ -1,4 +1,4 @@
-# Zapera
+# KiaraFun
 
 ## Running on Replit
 
@@ -6,12 +6,12 @@
 - Express serves both the React frontend and `/api` on `0.0.0.0:5000`.
 - Required secrets: `DATABASE_URL` (managed PostgreSQL) and `SESSION_SECRET`. Keep the session secret stable: it also encrypts stored wallet private keys.
 - Initialize a new development database with `npm run db:push`. Do not run schema commands against an existing external database without confirming the target.
-- `SOLANA_RPC_URL` is optional and defaults to Solana devnet. This does not make the external trading services devnet-compatible; do not use real funds until those integrations and network settings have been reviewed.
+- Imported RPC fallbacks disagree (wallets: Devnet, trading: Mainnet). Financial execution fails closed until `SOLANA_RPC_URL` is explicitly configured, genesis verification confirms Mainnet, and the operator explicitly sets `MAINNET_TRANSACTIONS_ENABLED=true`. No RPC or approval variable was changed by the redesign.
 - Checks: `npm run check` for TypeScript; `npm run build` for the production bundle; `npm start` to serve that bundle.
 
 ## Overview
 
-Zapera is a Solana trading dashboard application designed for cryptocurrency wallet management, token deployment, and trade monitoring. The platform provides a light-mode focused interface with crypto-specific aesthetics, targeting users who need to manage multiple Solana wallets, deploy tokens to various platforms (PumpFun, BonkFun, Meteora), and monitor trading activities.
+KiaraFun is a Solana discovery, managed-wallet, token-creation, and trading workspace. The original user-supplied Kiara character accompanies a light-first sky/navy interface with persisted dark mode. The existing stack, schema, wallet encryption, transaction builders, and route contracts are retained. Pump.fun has the existing live deployment implementation; Bonk.fun/Meteora save configuration-only pending records. See `DOCS.md` for current capability boundaries.
 
 ## User Preferences
 
@@ -27,10 +27,13 @@ Preferred communication style: Simple, everyday language.
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Build Tool**: Vite with custom plugins for Replit integration
 
-The frontend follows a page-based structure with three main sections:
-- Monitor Page: Trade monitoring and auto-buy configuration
-- Deploy Page: Token deployment wizard with multi-step form
-- Wallets Page: Wallet CRUD operations with balance tracking
+The frontend follows a page-based structure:
+- `/`: Explore, backed by real token feeds and mint search.
+- `/monitor`: Existing automation and holdings controls in a dedicated workspace.
+- `/deploy`: Token creation studio; `/deploy/:id`: token management.
+- `/my-tokens`: Saved deployment records.
+- `/wallets`: Managed-wallet controls.
+- `/docs`: Product guidance and technical reference.
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
@@ -87,11 +90,11 @@ Key backend modules:
 - API endpoints: GET /api/holdings, GET /api/holdings/active, POST /api/holdings/:id/sell
 
 ### Design System
-The application follows crypto dashboard aesthetics with:
-- Dark mode as default with light mode support
-- Terminal/monospace fonts (JetBrains Mono) throughout entire application
-- Primary color: Soft green accent (hsl 150 50% 45%)
-- Component library: shadcn/ui with New York style variant
+The KiaraFun design system uses:
+- Light-first sky-blue/navy surfaces with persisted midnight dark mode.
+- Sora headings, DM Sans interface text, IBM Plex Mono financial values.
+- The original supplied Kiara artwork, without generated substitutes.
+- Existing Radix/shadcn primitives refined for responsive financial workflows.
 
 ### Pump.fun Integration
 - Real-time token feed via PumpPortal WebSocket (wss://pumpportal.fun/api/data)
@@ -110,7 +113,7 @@ The application follows crypto dashboard aesthetics with:
 ### Dynamic SOL Pricing
 - Real-time SOL/USD price from CoinGecko API
 - Updates every 60 seconds with automatic caching
-- Fallback to $200 if API unavailable
+- Shows price unavailable rather than inventing a fallback quote
 - Displayed in monitor page header
 
 ### Token Analytics System
@@ -126,12 +129,12 @@ The application follows crypto dashboard aesthetics with:
 - Backend service (`server/fee-distribution.ts`) manages token creator fees
 - Configurable allocation percentages: burn, AMM, creator, liquidity (must total 100%)
 - Token burning implemented via real Solana transactions (SPL Token burn instruction)
-- Auto-claim service runs every 10 minutes for enabled tokens
+- Auto-claim service monitors enabled records every 10 minutes; it cannot execute claims. Actual creator claiming must be completed on Pump.fun.
 - Database table `feeActivities` tracks all fee operations
 - API endpoints:
   - GET /api/tokens/:id/fees - Fee stats and activity history
   - PUT /api/tokens/:id/fees/allocation - Update distribution percentages
-  - POST /api/tokens/:id/fees/claim - Manual fee claim
+  - POST /api/tokens/:id/fees/claim - Existing request contract; service reports that direct claiming is unavailable
   - POST /api/tokens/:id/fees/distribute - Execute fee distribution
   - POST /api/tokens/:id/autoclaim/toggle - Enable/disable auto-claim
 
@@ -142,9 +145,9 @@ The application follows crypto dashboard aesthetics with:
 - Fee statistics (collected, distributed, burned)
 - Allocation sliders for fee distribution configuration
 - Activity stream showing fee operations history
-- **Price Chart**: Real-time price history using lightweight-charts library
-  - Fetches actual trade data from Pump.fun API
-  - 5-minute data aggregation with caching
+- **Price Chart**: Existing real-data DEXTools embed with theme-aware presentation
+  - The separate price-history API aggregates actual Pump.fun trades
+  - Missing history is not backfilled with invented earlier price points
   - Dark/light mode theme support
 - **LP Token Burning**: Burn Raydium LP tokens for graduated tokens
   - Wallet ownership verification

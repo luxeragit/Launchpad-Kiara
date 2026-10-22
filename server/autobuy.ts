@@ -2,6 +2,7 @@ import { storage } from "./storage";
 import { buyTokenOnPumpFun, type BuyResult } from "./pumpfun-buy";
 import { decrypt } from "./crypto";
 import type { TradeSetting, Wallet } from "@shared/schema";
+import { getNetworkStatus } from "./network-safety";
 
 export interface TokenData {
   mint: string;
@@ -109,6 +110,13 @@ export async function executeAutoBuy(
   userId: string
 ): Promise<AutoBuyResult[]> {
   const results: AutoBuyResult[] = [];
+  const network = await getNetworkStatus();
+  if (!network.transactionsEnabled) {
+    return walletIds.map((walletId) => ({
+      walletId, walletAddress: "unavailable",
+      result: { success: false, error: network.reason },
+    }));
+  }
 
   console.log(`[AutoBuy] Executing auto-buy for ${token.symbol} (${token.mint})`);
   console.log(`[AutoBuy] Wallets: ${walletIds.length}, Amount: ${solAmount} SOL each, userId: ${userId}`);
@@ -209,6 +217,7 @@ export async function executeAutoBuy(
 
 export async function processNewToken(token: TokenData): Promise<void> {
   try {
+    if (!(await getNetworkStatus()).transactionsEnabled) return;
     // Get all users with monitoring enabled using internal method
     const allSettings = await storage.internal_getAllMonitoringSettings();
 

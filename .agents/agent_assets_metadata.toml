@@ -1,0 +1,44 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "xGrSn_ZnSps3VoJ-8Ebal"
+uri = "file://generated-artifacts/kiarafun/implementation-report.html"
+type = "html"
+title = "KiaraFun — implementation and verification report"
+description = "Before-and-after screenshots, feature-preservation matrix, test results, changed files, and network/security limitations."
+logical_id = "8cd9fe40-13e8-44d4-89d0-2597f2a7bd5c"
+content_hash = "sha256:edc5e96098dff05cc0fcd428d4c4dcbcb39cb172b0d6385bb1af88e3d73bcb77"
+size = 385059
+mtime_ms = 1792675089478
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7c1692a2-6cdd-4f8f-af51-e3162b40ed3b/8cd9fe40-13e8-44d4-89d0-2597f2a7bd5c/f21325ab-d426-4989-9f74-b4a721943443"
+storage_version_token = "1792675091148465"
+content_type = "text/html"
+
+[[outputs]]
+id = "Etx5iW6_5EZ5cjTRDYy_p"
+uri = "file://generated-artifacts/kiarafun/explore-desktop.jpg"
+type = "image"
+title = "KiaraFun — desktop Explore"
+description = "Final 1440 × 900 browser capture with live public discovery and visible network safety status."
+logical_id = "a8b95d62-f0c8-4c39-b05d-bf8cd6dac517"
+content_hash = "sha256:384c3e73af0cbe1f1ddff8b647dc2160a009c74b10941eabade823fb17a05844"
+size = 126759
+mtime_ms = 1792674471582
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7c1692a2-6cdd-4f8f-af51-e3162b40ed3b/a8b95d62-f0c8-4c39-b05d-bf8cd6dac517/449f30de-53e3-47b0-998a-054031a0cd4a"
+storage_version_token = "1792675092430926"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "fe3aN0LQfF2UNaKC2YGFr"
+uri = "file://generated-artifacts/kiarafun/create-mobile.jpg"
+type = "image"
+title = "KiaraFun — mobile Create"
+description = "Final 390 × 844 browser capture of the four-step token creation interface."
+logical_id = "0b36064b-87b6-4129-a853-e6e086f53e9b"
+content_hash = "sha256:d2f3401616321b56d55c142107548af76ae6d05e86fbc29d4af48115a19d1ba5"
+size = 40650
+mtime_ms = 1792674467626
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:7c1692a2-6cdd-4f8f-af51-e3162b40ed3b/0b36064b-87b6-4129-a853-e6e086f53e9b/f84eaed6-2413-4c4d-867a-bf5f23179694"
+storage_version_token = "1792675093702672"
+content_type = "image/jpeg"

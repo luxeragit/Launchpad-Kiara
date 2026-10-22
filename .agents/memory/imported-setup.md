@@ -14,3 +14,13 @@ An install that updates a direct dependency can still retain a blocked transitiv
 **Why:** Updating Express within its existing major version did not force its locked proxy dependency to refresh, despite a permitted patched release being available.
 
 **How to apply:** Follow the package-firewall recovery rules; inspect the parent range and lockfile before assuming a parent update resolved the blocked dependency. Never bypass the firewall.
+
+Do not assume every runner described by an installed skill is available in the
+current runtime. If browser testing is unavailable, use an existing browser
+without changing application authentication or adding production-only test data.
+
+**Why:** The advertised testing subagent kind was rejected by this runtime;
+non-destructive Chromium/CDP checks provided actual browser evidence instead.
+
+**How to apply:** Confirm runner support, keep safe sign-in and real backend
+contracts intact, and distinguish actual browser results from unverified flows.

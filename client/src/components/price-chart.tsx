@@ -10,9 +10,16 @@ interface PriceChartProps {
 export function PriceChart({ tokenMint, height = 450 }: PriceChartProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [theme, setTheme] = useState(() => document.documentElement.classList.contains("dark") ? "dark" : "light");
 
   const dextoolsUrl = `https://www.dextools.io/app/en/solana/pair-explorer/${tokenMint}`;
-  const embedUrl = `https://www.dextools.io/widget-chart/en/solana/pe-light/${tokenMint}?theme=dark&chartType=1&chartResolution=15&drawingToolbars=false`;
+  const embedUrl = `https://www.dextools.io/widget-chart/en/solana/pe-light/${tokenMint}?theme=${theme}&chartType=1&chartResolution=15&drawingToolbars=false`;
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light"));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);

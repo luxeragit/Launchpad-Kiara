@@ -5,6 +5,7 @@ import connectPgSimple from "connect-pg-simple";
 import multer from "multer";
 import { storage } from "./storage";
 import { authRouter, requireAuth } from "./auth";
+import { getNetworkStatus, networkSafetyMiddleware } from "./network-safety";
 
 // Configure multer for file uploads (memory storage for processing)
 const upload = multer({
@@ -118,6 +119,11 @@ export async function registerRoutes(
   
   // Auth routes
   app.use("/api/auth", authRouter);
+  app.get("/api/network/status", async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await getNetworkStatus());
+  });
+  app.use("/api", networkSafetyMiddleware);
   
   // Get Solana connection info
   app.get("/api/solana/info", async (_req, res) => {
@@ -1716,7 +1722,7 @@ export async function registerRoutes(
           {
             headers: {
               'Accept': 'application/json',
-              'User-Agent': 'Zapera/1.0',
+              'User-Agent': 'KiaraFun/1.0',
             },
           }
         );
@@ -1781,14 +1787,10 @@ export async function registerRoutes(
             const currentPrice = tokenInfo.virtualSolReserves / tokenInfo.virtualTokenReserves;
             const now = Math.floor(Date.now() / 1000);
             
-            // Generate a few data points showing price stability
-            priceHistory = [
-              { time: now - 300, value: currentPrice }, // 5 min ago
-              { time: now - 180, value: currentPrice }, // 3 min ago
-              { time: now - 60, value: currentPrice },  // 1 min ago
-              { time: now, value: currentPrice },       // now
-            ];
-            console.log(`[PriceHistory] Generated ${priceHistory.length} points from bonding curve (price: ${currentPrice})`);
+            // A current observation is not historical data. Never invent earlier
+            // points: clients can show an insufficient-history state.
+            priceHistory = [{ time: now, value: currentPrice }];
+            console.log("[PriceHistory] Returning one current bonding-curve observation");
           }
         } catch (bondingError) {
           console.error("[PriceHistory] Error fetching bonding curve data:", bondingError);

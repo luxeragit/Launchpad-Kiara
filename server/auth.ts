@@ -40,7 +40,7 @@ authRouter.get("/nonce/:walletAddress", async (req, res) => {
     }
     
     // Use simple message format without newlines to avoid encoding issues
-    const message = `Zapera Authentication - Nonce: ${nonce}`;
+    const message = `KiaraFun Authentication - Nonce: ${nonce}`;
     
     res.json({ message, nonce });
   } catch (error) {

@@ -25,42 +25,54 @@ import {
   FileCode,
   Server,
 } from "lucide-react";
+import { Link } from "wouter";
+import { ArrowUpRight, CircleCheck } from "lucide-react";
 
 export default function DocsPage() {
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b bg-card/50 px-6 py-4">
-        <h1 className="text-2xl font-bold" data-testid="text-docs-title">Documentation</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Complete guide to Pyre Market
-        </p>
+    <div className="docs-page flex h-full min-w-0 flex-col">
+      <div className="border-b bg-card/70 px-4 py-5 sm:px-6">
+        <div className="page-frame">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.16em] text-primary">Field guide</p>
+          <h1 className="font-display text-2xl font-semibold" data-testid="text-docs-title">Documentation</h1>
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+            Practical instructions for your wallets, token launches, and market tools—with limits stated plainly.
+          </p>
+        </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-5" data-testid="tabs-docs">
+      <ScrollArea className="min-w-0 w-full max-w-full flex-1 overflow-hidden">
+        <div className="page-frame space-y-6 py-5 sm:py-7">
+          <Tabs defaultValue="overview" className="w-full min-w-0 max-w-full">
+            <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="grid w-[520px] grid-cols-5 md:w-full" data-testid="tabs-docs">
               <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
               <TabsTrigger value="features" data-testid="tab-features">Features</TabsTrigger>
               <TabsTrigger value="api" data-testid="tab-api">API</TabsTrigger>
               <TabsTrigger value="trading" data-testid="tab-trading">Trading</TabsTrigger>
               <TabsTrigger value="security" data-testid="tab-security">Security</TabsTrigger>
             </TabsList>
+            </div>
 
-            <TabsContent value="overview" className="mt-6 space-y-6">
+            <TabsContent value="overview" className="mt-6 min-w-0 max-w-full space-y-6">
+              <div className="flex flex-col justify-between gap-5 overflow-hidden rounded-lg border border-primary/20 bg-[linear-gradient(110deg,hsl(var(--primary)/.09),hsl(var(--card))_65%)] p-5 sm:flex-row sm:items-center sm:p-6">
+                <div className="max-w-xl">
+                  <p className="text-xs font-semibold uppercase tracking-[.14em] text-primary">Before a financial action</p>
+                  <h2 className="mt-2 font-display text-xl font-semibold">Check the network, then check the action.</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">The server independently enforces its mainnet approval gate. A mismatched or unverifiable network pauses financial controls; the interface cannot override that policy.</p>
+                </div>
+                <div className="flex min-w-[180px] items-center gap-2 rounded-md border bg-card/80 px-3 py-3 text-xs font-medium"><CircleCheck className="h-4 w-4 shrink-0 text-primary" />Status stays visible across the app</div>
+              </div>
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Globe className="h-5 w-5 text-primary" />
-                    What is Pyre Market?
+                    Welcome to KiaraFun
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-muted-foreground">
-                    Pyre Market is a comprehensive Solana trading dashboard designed for 
-                    cryptocurrency wallet management, token deployment, and automated trade 
-                    monitoring. The platform provides tools for managing multiple Solana wallets, 
-                    deploying tokens to various platforms, and monitoring trading activities in real-time.
+                    KiaraFun brings token discovery, wallet management, Pump.fun launch requests, and configurable trade monitoring into one Solana workspace. Review the active network status before any financial action.
                   </p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -75,7 +87,7 @@ export default function DocsPage() {
                       <Rocket className="h-8 w-8 text-primary" />
                       <h3 className="font-semibold">Token Deployment</h3>
                       <p className="text-sm text-muted-foreground">
-                        Deploy tokens to Pump.fun, BonkFun, and Meteora platforms
+                        Submit live Pump.fun launches. Bonk.fun and Meteora are configuration-only selections; live launch is not implemented.
                       </p>
                     </div>
                     <div className="flex flex-col gap-2 p-4 rounded-md border">
@@ -146,9 +158,21 @@ export default function DocsPage() {
                   </div>
                 </CardContent>
               </Card>
+              <div className="flex flex-wrap items-center gap-2 border-t pt-5">
+                <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Go to a task</span>
+                <Link href="/wallets" className="rounded-full border bg-card px-3 py-1.5 text-sm hover:border-primary/50">Create or import a wallet</Link>
+                <Link href="/" className="rounded-full border bg-card px-3 py-1.5 text-sm hover:border-primary/50">Explore tokens</Link>
+                <Link href="/deploy" className="rounded-full border bg-card px-3 py-1.5 text-sm hover:border-primary/50">Create a launch</Link>
+                <Link href="/monitor" className="rounded-full border bg-card px-3 py-1.5 text-sm hover:border-primary/50">Configure monitoring</Link>
+                <Link href="/my-tokens" className="rounded-full border bg-card px-3 py-1.5 text-sm hover:border-primary/50">Manage your tokens</Link>
+              </div>
+              <div className="grid gap-3 border-t pt-5 sm:grid-cols-2">
+                <div className="rounded-md border bg-muted/25 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-primary">Launch support</p><p className="mt-2 text-sm text-muted-foreground">Pump.fun submits a live launch request. Bonk.fun and Meteora preserve platform configuration only; live launch is not implemented.</p><Link href="/deploy" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary">Open token studio <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
+                <div className="rounded-md border bg-muted/25 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-primary">Creator fees</p><p className="mt-2 text-sm text-muted-foreground">KiaraFun can monitor claim availability, but does not execute automatic claims. Complete creator claims on Pump.fun.</p><Link href="/my-tokens" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary">View token records <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
+              </div>
             </TabsContent>
 
-            <TabsContent value="features" className="mt-6 space-y-6">
+            <TabsContent value="features" className="mt-6 min-w-0 max-w-full space-y-6">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="wallets">
                   <AccordionTrigger>
@@ -179,10 +203,10 @@ export default function DocsPage() {
                   <AccordionContent className="space-y-3 pt-2">
                     <ul className="list-disc list-inside space-y-2 text-muted-foreground">
                       <li>Multi-step deployment wizard</li>
-                      <li>Platform selection: Pump.fun, BonkFun, Meteora</li>
+                      <li>Pump.fun live deployment request; Bonk.fun and Meteora save pending configuration only</li>
                       <li>Token metadata configuration (name, symbol, description, image)</li>
                       <li>Social links setup (Twitter, Telegram, Website)</li>
-                      <li>Fee distribution configuration</li>
+                      <li>Fee allocation configuration and claim-availability monitoring only; creator claims must be completed manually on Pump.fun</li>
                       <li>Token dashboard for post-deployment management</li>
                     </ul>
                   </AccordionContent>
@@ -244,7 +268,7 @@ export default function DocsPage() {
               </Accordion>
             </TabsContent>
 
-            <TabsContent value="api" className="mt-6 space-y-6">
+            <TabsContent value="api" className="mt-6 min-w-0 max-w-full space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -295,7 +319,7 @@ export default function DocsPage() {
                             <p className="text-muted-foreground mt-1 font-sans text-xs">Import wallet from private key</p>
                           </div>
                           <div className="p-3 bg-muted rounded-md">
-                            <code className="text-primary">POST</code> /api/wallets/:id/transfer
+                            <code className="text-primary">POST</code> /api/wallets/transfer
                             <p className="text-muted-foreground mt-1 font-sans text-xs">Transfer SOL to another address</p>
                           </div>
                         </div>
@@ -339,8 +363,8 @@ export default function DocsPage() {
                             <p className="text-muted-foreground mt-1 font-sans text-xs">Update trade settings</p>
                           </div>
                           <div className="p-3 bg-muted rounded-md">
-                            <code className="text-primary">POST</code> /api/trade/quick-buy
-                            <p className="text-muted-foreground mt-1 font-sans text-xs">Execute quick buy</p>
+                            <code className="text-primary">POST</code> /api/trade/buy
+                            <p className="text-muted-foreground mt-1 font-sans text-xs">Execute a token buy</p>
                           </div>
                           <div className="p-3 bg-muted rounded-md">
                             <code className="text-primary">GET</code> /api/holdings
@@ -378,7 +402,7 @@ export default function DocsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="trading" className="mt-6 space-y-6">
+            <TabsContent value="trading" className="mt-6 min-w-0 max-w-full space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -478,7 +502,7 @@ export default function DocsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="security" className="mt-6 space-y-6">
+            <TabsContent value="security" className="mt-6 min-w-0 max-w-full space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -532,6 +556,20 @@ export default function DocsPage() {
                       </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    Network and airdrop gates
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <p>Financial actions require server-approved mainnet settings and verified wallet/trading network consistency. A frontend toggle cannot bypass the server guard.</p>
+                  <p>Airdrops are controlled by the network status&apos;s explicit <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">airdropEnabled</code> flag—not inferred from a network label. If permission is false or unavailable, no airdrop action should be offered.</p>
+                  <p>Stopping automation and editing non-financial setup remain available when financial actions are paused.</p>
                 </CardContent>
               </Card>
 

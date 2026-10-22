@@ -78,11 +78,15 @@ import {
   Flame,
   Archive,
   Loader2,
+  CircleAlert,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Wallet as WalletType } from "@shared/schema";
+import { useNetworkStatus } from "@/hooks/use-network-status";
+import { useAuth } from "@/contexts/AuthContext";
+import { WalletConnectButton } from "@/components/wallet-connect-button";
 
 const createWalletFormSchema = z.object({
   label: z.string().min(1, "Label is required").max(50),
@@ -128,12 +132,16 @@ export default function WalletsPage() {
   const [burnTokenMint, setBurnTokenMint] = useState<string>("");
   const [burnAmount, setBurnAmount] = useState<string>("0");
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const network = useNetworkStatus();
+  const transactionsEnabled = !!network.data?.transactionsEnabled && !network.isError;
   
   const isMountedRef = useRef(true);
   const keyFetchAbortRef = useRef<AbortController | null>(null);
 
-  const { data: wallets, isLoading, refetch, isRefetching } = useQuery<WalletType[]>({
+  const { data: wallets, isLoading, isError: walletsError, refetch, isRefetching } = useQuery<WalletType[]>({
     queryKey: ["/api/wallets"],
+    enabled: isAuthenticated,
   });
 
   const clearSensitiveData = useCallback(() => {
@@ -175,8 +183,10 @@ export default function WalletsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateWalletForm) =>
-      apiRequest("POST", "/api/wallets", data),
+    mutationFn: (data: CreateWalletForm) => {
+      if (!isAuthenticated) throw new Error("Connect a wallet before creating a managed wallet.");
+      return apiRequest("POST", "/api/wallets", data);
+    },
     onSuccess: () => {
       toast({ title: "Wallet Created", description: "New wallet has been created" });
       queryClient.invalidateQueries({ queryKey: ["/api/wallets"] });
@@ -189,8 +199,10 @@ export default function WalletsPage() {
   });
 
   const importMutation = useMutation({
-    mutationFn: (data: ImportWalletForm) =>
-      apiRequest("POST", "/api/wallets/import", data),
+    mutationFn: (data: ImportWalletForm) => {
+      if (!isAuthenticated) throw new Error("Connect a wallet before importing a managed wallet.");
+      return apiRequest("POST", "/api/wallets/import", data);
+    },
     onSuccess: () => {
       toast({ title: "Wallet Imported", description: "Wallet has been imported" });
       queryClient.invalidateQueries({ queryKey: ["/api/wallets"] });
@@ -203,8 +215,11 @@ export default function WalletsPage() {
   });
 
   const transferMutation = useMutation({
-    mutationFn: (data: TransferForm & { fromWalletId: string }) =>
-      apiRequest("POST", "/api/wallets/transfer", data),
+    mutationFn: (data: TransferForm & { fromWalletId: string }) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to transfer SOL.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
+      return apiRequest("POST", "/api/wallets/transfer", data);
+    },
     onSuccess: () => {
       toast({ title: "Transfer Initiated", description: "Transaction submitted" });
       queryClient.invalidateQueries({ queryKey: ["/api/wallets"] });
@@ -218,8 +233,10 @@ export default function WalletsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest("DELETE", `/api/wallets/${id}`, undefined),
+    mutationFn: (id: string) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to manage wallets.");
+      return apiRequest("DELETE", `/api/wallets/${id}`, undefined);
+    },
     onSuccess: () => {
       toast({ title: "Wallet Deleted", description: "Wallet has been removed" });
       queryClient.invalidateQueries({ queryKey: ["/api/wallets"] });
@@ -232,7 +249,10 @@ export default function WalletsPage() {
   });
 
   const refreshBalancesMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/wallets/refresh", undefined),
+    mutationFn: () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to refresh balances.");
+      return apiRequest("POST", "/api/wallets/refresh", undefined);
+    },
     onSuccess: () => {
       toast({ title: "Balances Updated", description: "All wallet balances refreshed" });
       queryClient.invalidateQueries({ queryKey: ["/api/wallets"] });
@@ -244,6 +264,7 @@ export default function WalletsPage() {
 
   const downloadMutation = useMutation({
     mutationFn: async (walletIds: string[]) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before exporting wallet information.");
       const response = await apiRequest("POST", "/api/wallets/download", { walletIds });
       return response.json();
     },
@@ -266,6 +287,7 @@ export default function WalletsPage() {
 
   const cleanupMutation = useMutation({
     mutationFn: async () => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to manage wallets.");
       const response = await apiRequest("POST", "/api/wallets/cleanup", undefined);
       return response.json();
     },
@@ -281,6 +303,7 @@ export default function WalletsPage() {
 
   const archiveMutation = useMutation({
     mutationFn: async (walletId: string) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet to manage wallets.");
       const response = await apiRequest("POST", `/api/wallets/${walletId}/archive`, undefined);
       return response.json();
     },
@@ -295,6 +318,8 @@ export default function WalletsPage() {
 
   const fundMutation = useMutation({
     mutationFn: async (data: { sourceWalletId: string; targetWalletIds: string[]; amountPerWallet: number }) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before funding wallets.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       const response = await apiRequest("POST", "/api/wallets/fund", data);
       return response.json();
     },
@@ -312,6 +337,8 @@ export default function WalletsPage() {
 
   const consolidateMutation = useMutation({
     mutationFn: async (data: { sourceWalletIds: string[]; targetWalletId: string }) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before consolidating funds.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       const response = await apiRequest("POST", "/api/wallets/consolidate", data);
       return response.json();
     },
@@ -332,6 +359,8 @@ export default function WalletsPage() {
 
   const burnMutation = useMutation({
     mutationFn: async (data: { walletId: string; tokenMint: string; amount: number }) => {
+      if (!isAuthenticated) throw new Error("Connect your wallet before burning tokens.");
+      if (!transactionsEnabled) throw new Error(network.data?.reason || "Network safety has not been verified.");
       const response = await apiRequest("POST", "/api/wallets/burn", data);
       return response.json();
     },
@@ -365,6 +394,11 @@ export default function WalletsPage() {
       });
       return;
     }
+    if (!isAuthenticated) {
+      toast({ title: "Connect to reveal a key", description: "Private keys are only available to the signed-in wallet session.", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm("Reveal this wallet's private key on screen? Anyone who sees it can control the funds.")) return;
     
     if (!fetchedKeys.has(id)) {
       if (keyFetchAbortRef.current) {
@@ -377,6 +411,7 @@ export default function WalletsPage() {
       try {
         const response = await fetch(`/api/wallets/${id}/key`, {
           signal: abortController.signal,
+          credentials: "include",
         });
         if (!response.ok) throw new Error("Failed to fetch key");
         const data = await response.json();
@@ -442,35 +477,41 @@ export default function WalletsPage() {
   };
 
   const totalBalance = wallets?.reduce((sum, w) => sum + (w.balance || 0), 0) || 0;
+  const balanceKnown = !!wallets && wallets.every((wallet) => wallet.balance !== null && wallet.balance !== undefined);
   const activeCount = wallets?.filter((w) => w.isActive).length || 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="page-frame page-enter max-w-7xl space-y-6 py-7 md:py-10">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-md bg-primary/10">
+          <div className="grid h-11 w-11 place-items-center rounded-md bg-primary/10">
             <Wallet className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Wallet Management</h1>
-            <p className="text-sm text-muted-foreground">
-              Create, import, and manage your Solana wallets
-            </p>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[.16em] text-primary">Wallet control center</p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight">Your wallets</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Balances, signing wallets, and wallet operations in one place.</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm">
-          <Badge variant="secondary" className="font-mono">
-            {wallets?.length || 0} of {wallets?.length || 0} SHOWN
-          </Badge>
-          <Badge variant="secondary" className="font-mono">
-            {totalBalance.toFixed(4)} TOTAL SOL
-          </Badge>
-          <Badge variant="secondary">
-            {activeCount} ACTIVE
-          </Badge>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="rounded-md border bg-card px-3 py-2"><span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Wallets</span><span className="font-mono font-semibold">{isAuthenticated ? wallets?.length ?? "—" : "—"}</span></div>
+          <div className="rounded-md border bg-card px-3 py-2"><span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Combined SOL</span><span className="font-mono font-semibold">{isAuthenticated && balanceKnown ? totalBalance.toFixed(4) : "—"}</span></div>
+          <div className="rounded-md border bg-card px-3 py-2"><span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Active</span><span className="font-mono font-semibold">{isAuthenticated && wallets ? activeCount : "—"}</span></div>
         </div>
       </div>
+
+      {!authLoading && !isAuthenticated && (
+        <Card className="border-primary/25 bg-primary/[.035]">
+          <CardContent className="flex flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3">
+              <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div><p className="font-semibold">Connect to load your wallet portfolio</p><p className="mt-1 text-sm text-muted-foreground">Wallet data is private. You can open create or import forms now; changes require the existing signed-in wallet session.</p></div>
+            </div>
+            <WalletConnectButton />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3">
@@ -483,7 +524,7 @@ export default function WalletsPage() {
                 data-testid="button-create-wallet"
               >
                 <Plus className="h-4 w-4" />
-                NEW
+                Create wallet
               </Button>
               <Button
                 size="sm"
@@ -493,7 +534,7 @@ export default function WalletsPage() {
                 data-testid="button-import-wallet"
               >
                 <Download className="h-4 w-4" />
-                IMPORT
+                Import wallet
               </Button>
               <Button
                 size="sm"
@@ -502,19 +543,17 @@ export default function WalletsPage() {
                   refetch();
                   refreshBalancesMutation.mutate();
                 }}
-                disabled={isRefetching || refreshBalancesMutation.isPending}
+                disabled={!isAuthenticated || isRefetching || refreshBalancesMutation.isPending}
                 className="gap-2"
                 data-testid="button-refresh-wallets"
               >
                 <RefreshCw className={`h-4 w-4 ${(isRefetching || refreshBalancesMutation.isPending) ? "animate-spin" : ""}`} />
-                REFRESH
+                Refresh balances
               </Button>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <Button size="sm" variant="ghost" disabled className="gap-1 text-xs">
-                VIEW: ALL
-              </Button>
+              <span className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground">Select wallets to manage them</span>
             </div>
           </div>
         </CardHeader>
@@ -525,26 +564,12 @@ export default function WalletsPage() {
               size="sm" 
               variant="ghost" 
               className="gap-1 text-xs" 
-              onClick={() => setShowCreateDialog(true)}
-              data-testid="toolbar-create"
-            >
-              <Plus className="h-3 w-3" /> CREATE
-            </Button>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="gap-1 text-xs" 
-              onClick={() => setShowImportDialog(true)}
-              data-testid="toolbar-import"
-            >
-              <Download className="h-3 w-3" /> IMPORT
-            </Button>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="gap-1 text-xs" 
               disabled={selectedWallets.length === 0 || downloadMutation.isPending}
-              onClick={() => downloadMutation.mutate(selectedWallets)}
+              onClick={() => {
+                if (window.confirm("Export selected private keys to a JSON file? Store it securely; anyone with the file can control these wallets.")) {
+                  downloadMutation.mutate(selectedWallets);
+                }
+              }}
               data-testid="toolbar-download"
             >
               {downloadMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowDownToLine className="h-3 w-3" />} DOWNLOAD
@@ -649,11 +674,25 @@ export default function WalletsPage() {
             )}
           </div>
 
-          {isLoading ? (
+          {authLoading || (isAuthenticated && isLoading) ? (
             <div className="p-4 space-y-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
+            </div>
+          ) : !isAuthenticated ? (
+            <div className="px-5 py-12 text-center">
+              <Wallet className="mx-auto mb-4 h-10 w-10 text-primary/70" />
+              <h2 className="font-display text-lg font-semibold">Your portfolio stays private until you connect</h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">Connect Phantom or Solflare through KiaraFun’s existing signature flow to load balances and actions.</p>
+              <div className="mt-4 flex justify-center"><WalletConnectButton /></div>
+            </div>
+          ) : walletsError ? (
+            <div className="px-5 py-12 text-center">
+              <CircleAlert className="mx-auto mb-3 h-8 w-8 text-destructive" />
+              <p className="font-semibold">Wallets could not be loaded</p>
+              <p className="mt-1 text-sm text-muted-foreground">Your balances are not available. Nothing has been changed.</p>
+              <Button className="mt-4" variant="outline" onClick={() => refetch()}>Retry</Button>
             </div>
           ) : !wallets || wallets.length === 0 ? (
             <div className="text-center py-16">
@@ -751,7 +790,7 @@ export default function WalletsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {(wallet.balance || 0).toFixed(4)}
+                        {wallet.balance != null ? wallet.balance.toFixed(4) : "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -794,10 +833,27 @@ export default function WalletsPage() {
                                 variant="ghost"
                                 className="h-6 w-6"
                                 onClick={async () => {
-                                  if (!fetchedKeys.has(wallet.id)) {
-                                    await toggleKeyVisibility(wallet.id);
+                                  if (!isAuthenticated) return;
+                                  if (!window.confirm("Copy this private key to your clipboard? Anyone who can access it can control the funds.")) return;
+                                  let key = fetchedKeys.get(wallet.id);
+                                  if (!key) {
+                                    setLoadingKeys((prev) => new Set(prev).add(wallet.id));
+                                    try {
+                                      const response = await fetch(`/api/wallets/${wallet.id}/key`, { credentials: "include" });
+                                      if (!response.ok) throw new Error("Private key could not be loaded.");
+                                      const data = await response.json();
+                                      key = data.privateKey;
+                                      setFetchedKeys((prev) => new Map(prev).set(wallet.id, key!));
+                                    } catch (error) {
+                                      toast({ title: "Could not copy key", description: error instanceof Error ? error.message : "Request failed", variant: "destructive" });
+                                    } finally {
+                                      setLoadingKeys((prev) => {
+                                        const next = new Set(prev);
+                                        next.delete(wallet.id);
+                                        return next;
+                                      });
+                                    }
                                   }
-                                  const key = fetchedKeys.get(wallet.id);
                                   if (key) copyToClipboard(key, "Private key");
                                 }}
                                 disabled={loadingKeys.has(wallet.id)}
@@ -903,7 +959,7 @@ export default function WalletsPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || !isAuthenticated}
                   data-testid="button-confirm-create"
                 >
                   {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -920,7 +976,7 @@ export default function WalletsPage() {
           <DialogHeader>
             <DialogTitle>Import Wallet</DialogTitle>
             <DialogDescription>
-              Import an existing Solana wallet using its private key.
+              Add a signing key to KiaraFun&apos;s managed-wallet workflow. This is different from connecting an external browser wallet. Only import a key you intend to manage here.
             </DialogDescription>
           </DialogHeader>
           <Form {...importForm}>
@@ -972,7 +1028,7 @@ export default function WalletsPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={importMutation.isPending}
+                  disabled={importMutation.isPending || !isAuthenticated}
                   data-testid="button-confirm-import"
                 >
                   {importMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -1048,7 +1104,7 @@ export default function WalletsPage() {
                     <p className="text-xs text-muted-foreground">From Wallet</p>
                     <p className="font-medium">{selectedWallet.label}</p>
                     <p className="text-sm text-muted-foreground font-mono">
-                      Balance: {(selectedWallet.balance || 0).toFixed(4)} SOL
+                      Balance: {selectedWallet.balance != null ? `${selectedWallet.balance.toFixed(4)} SOL` : "Balance unavailable"}
                     </p>
                   </div>
                   <FormField
@@ -1098,7 +1154,7 @@ export default function WalletsPage() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={transferMutation.isPending}
+                    disabled={transferMutation.isPending || !transactionsEnabled}
                     data-testid="button-confirm-transfer"
                   >
                     {transferMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -1175,7 +1231,7 @@ export default function WalletsPage() {
                 <SelectContent>
                   {wallets?.filter(w => !selectedWallets.includes(w.id)).map((wallet) => (
                     <SelectItem key={wallet.id} value={wallet.id}>
-                      {wallet.label} ({(wallet.balance || 0).toFixed(4)} SOL)
+                      {wallet.label} ({wallet.balance != null ? `${wallet.balance.toFixed(4)} SOL` : "Balance unavailable"})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1201,7 +1257,7 @@ export default function WalletsPage() {
               Cancel
             </Button>
             <Button
-              disabled={!fundSourceWallet || !fundAmount || fundMutation.isPending}
+              disabled={!fundSourceWallet || !fundAmount || fundMutation.isPending || !transactionsEnabled}
               onClick={() => {
                 fundMutation.mutate({
                   sourceWalletId: fundSourceWallet,
@@ -1237,7 +1293,7 @@ export default function WalletsPage() {
                 <SelectContent>
                   {wallets?.filter(w => !selectedWallets.includes(w.id)).map((wallet) => (
                     <SelectItem key={wallet.id} value={wallet.id}>
-                      {wallet.label} ({(wallet.balance || 0).toFixed(4)} SOL)
+                      {wallet.label} ({wallet.balance != null ? `${wallet.balance.toFixed(4)} SOL` : "Balance unavailable"})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1250,7 +1306,7 @@ export default function WalletsPage() {
                   const wallet = wallets?.find((w) => w.id === id);
                   return wallet ? (
                     <li key={id}>
-                      {wallet.label}: {(wallet.balance || 0).toFixed(4)} SOL
+                      {wallet.label}: {wallet.balance != null ? `${wallet.balance.toFixed(4)} SOL` : "Balance unavailable"}
                     </li>
                   ) : null;
                 })}
@@ -1262,7 +1318,7 @@ export default function WalletsPage() {
               Cancel
             </Button>
             <Button
-              disabled={!consolidateTargetWallet || consolidateMutation.isPending}
+              disabled={!consolidateTargetWallet || consolidateMutation.isPending || !transactionsEnabled}
               onClick={() => {
                 consolidateMutation.mutate({
                   sourceWalletIds: selectedWallets,
@@ -1314,7 +1370,7 @@ export default function WalletsPage() {
             </Button>
             <Button
               variant="destructive"
-              disabled={!burnTokenMint || !burnAmount || parseFloat(burnAmount) <= 0 || burnMutation.isPending}
+              disabled={!burnTokenMint || !burnAmount || parseFloat(burnAmount) <= 0 || burnMutation.isPending || !transactionsEnabled}
               onClick={() => {
                 if (selectedWallet) {
                   burnMutation.mutate({
