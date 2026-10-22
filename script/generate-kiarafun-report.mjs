@@ -40,7 +40,7 @@ flush();
 if (table) content += "</tbody></table></div>";
 const images = terminal ? [
   ["Before · rejected KiaraFun composition", "generated-artifacts/terminal/before-explore.jpg"],
-  ["After · real Explore terminal", "generated-artifacts/terminal/final-explore-desktop.jpg"],
+  ["After · real Explore terminal", "generated-artifacts/terminal/browser/explore-desktop-live.jpg"],
   ["Public token inspector · sell mode safely paused", "generated-artifacts/terminal/browser/public-token-inspector-sell-paused.jpg"],
   ["Create · launch workstation", "generated-artifacts/terminal/browser/create-1440x900.jpg"],
   ["Wallets · operations workspace", "generated-artifacts/terminal/browser/wallets-1440x900.jpg"],

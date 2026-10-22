@@ -95,7 +95,7 @@
 .light .text-sky-300, .light .text-sky-400 { color: #0369a1 !important; }
 .light .text-emerald-300, .light .text-emerald-400 { color: #047857 !important; }
 .light .text-rose-300, .light .text-rose-400 { color: #be123c !important; }
-.light .text-amber-200, .light .text-amber-300 { color: #854d0e !important; }
+.light [class*="text-amber-"] { color: #854d0e !important; }
 * { border-color: hsl(var(--border)); }
 html, body, #root { width:100%; min-height:100%; max-width:100%; margin:0; background:hsl(var(--background)); }
 body { min-height:100vh; overflow-x:clip; color:hsl(var(--foreground)); font-family:var(--font-sans); font-feature-settings:"ss01" on; -webkit-font-smoothing:antialiased; }
