@@ -1,0 +1,1 @@
+- [Imported setup boundaries](imported-setup.md) — preserve network behavior during setup; dependency upgrades may retain blocked locked transitive versions.

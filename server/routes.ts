@@ -767,7 +767,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/tokens/deploy", requireAuth, upload.single("logo"), handleMulterError, async (req, res) => {
+  app.post("/api/tokens/deploy", requireAuth, upload.single("logo"), handleMulterError, async (req: Request, res: Response) => {
     try {
       const userId = getUserId(req);
       if (!userId) {

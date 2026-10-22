@@ -1,5 +1,14 @@
 # Zapera
 
+## Running on Replit
+
+- Click **Run** to start the `Start application` workflow (`npm run dev`).
+- Express serves both the React frontend and `/api` on `0.0.0.0:5000`.
+- Required secrets: `DATABASE_URL` (managed PostgreSQL) and `SESSION_SECRET`. Keep the session secret stable: it also encrypts stored wallet private keys.
+- Initialize a new development database with `npm run db:push`. Do not run schema commands against an existing external database without confirming the target.
+- `SOLANA_RPC_URL` is optional and defaults to Solana devnet. This does not make the external trading services devnet-compatible; do not use real funds until those integrations and network settings have been reviewed.
+- Checks: `npm run check` for TypeScript; `npm run build` for the production bundle; `npm start` to serve that bundle.
+
 ## Overview
 
 Zapera is a Solana trading dashboard application designed for cryptocurrency wallet management, token deployment, and trade monitoring. The platform provides a light-mode focused interface with crypto-specific aesthetics, targeting users who need to manage multiple Solana wallets, deploy tokens to various platforms (PumpFun, BonkFun, Meteora), and monitor trading activities.
