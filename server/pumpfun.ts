@@ -1,5 +1,6 @@
 import WebSocket from "ws";
 import { triggerAutoBuyCallback } from "./autobuy";
+import { PumpMarketFeed, type MarketRanking } from "./market-feed";
 
 export interface PumpfunToken {
   mint: string;
@@ -52,6 +53,8 @@ let tradeData: Map<string, TokenTradeData> = new Map();
 let ws: WebSocket | null = null;
 let reconnectTimeout: NodeJS.Timeout | null = null;
 let isConnecting = false;
+let lastNewTokenAt: number | null = null;
+const marketFeed = new PumpMarketFeed(() => recentTokens.map((token) => token.mint));
 
 async function fetchTokenMetadata(uri: string): Promise<TokenMetadata | null> {
   if (!uri) return null;
@@ -100,9 +103,8 @@ function connectWebSocket() {
       ws?.send(JSON.stringify({ method: "subscribeNewToken" }));
       console.log("[PumpFun] Subscribed to new token events");
       
-      // Subscribe to all token trades for trending/movers tracking
-      ws?.send(JSON.stringify({ method: "subscribeTokenTrade", keys: [] }));
-      console.log("[PumpFun] Subscribed to token trade events");
+      // New-token streaming is free. Token trades require explicit mints and a
+      // funded metered account; never silently enable that subscription.
     });
 
     ws.on("message", async (data: WebSocket.Data) => {
@@ -111,6 +113,8 @@ function connectWebSocket() {
         
         // Handle new token creation events (txType: "create")
         if (message.mint && message.name && message.txType === 'create') {
+          if (recentTokens.some((token) => token.mint === message.mint)) return;
+          lastNewTokenAt = Date.now();
           const uri = message.uri || message.metadataUri || "";
           const marketCapSol = parseFloat(message.marketCapSol) || 0;
           
@@ -284,206 +288,36 @@ function connectWebSocket() {
   }
 }
 
-// Cache for API-fetched trending/king of the hill tokens
-let cachedApiTrending: PumpfunToken[] = [];
-let lastApiFetch = 0;
-const API_CACHE_TTL = 30000; // 30 seconds
-
-async function fetchTrendingFromApi(): Promise<PumpfunToken[]> {
-  const now = Date.now();
-  if (cachedApiTrending.length > 0 && now - lastApiFetch < API_CACHE_TTL) {
-    return cachedApiTrending;
-  }
-  
-  try {
-    // Fetch latest token profiles from DexScreener (includes trending Solana tokens)
-    const response = await fetch("https://api.dexscreener.com/token-profiles/latest/v1", {
-      headers: { 
-        'Accept': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      console.log("[PumpFun] DexScreener API fetch failed:", response.status);
-      return cachedApiTrending;
-    }
-    
-    const data = await response.json();
-    
-    if (Array.isArray(data)) {
-      // Filter only Solana tokens
-      const solanaTokens = data.filter((t: any) => t.chainId === 'solana');
-      
-      // Fetch additional data for each token from DexScreener pairs API
-      const enrichedTokens: PumpfunToken[] = [];
-      
-      for (const token of solanaTokens.slice(0, 20)) {
-        try {
-          const pairRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${token.tokenAddress}`);
-          if (pairRes.ok) {
-            const pairData = await pairRes.json();
-            const pair = pairData.pairs?.[0];
-            
-            if (pair) {
-              enrichedTokens.push({
-                mint: token.tokenAddress,
-                name: pair.baseToken?.name || "Unknown",
-                symbol: pair.baseToken?.symbol || "???",
-                uri: "",
-                image: token.icon || null,
-                creator: "",
-                timestamp: pair.pairCreatedAt || Date.now(),
-                tradeCount: (pair.txns?.h24?.buys || 0) + (pair.txns?.h24?.sells || 0),
-                volume: pair.volume?.h24 || 0,
-                lastPrice: parseFloat(pair.priceNative) || 0,
-                priceChange: pair.priceChange?.h24 || 0,
-                marketCapSol: (pair.marketCap || 0) / 200, // Approximate SOL value
-                twitter: token.links?.find((l: any) => l.type === 'twitter')?.url,
-                telegram: token.links?.find((l: any) => l.type === 'telegram')?.url,
-                website: token.links?.find((l: any) => l.type === 'website')?.url,
-              });
-            }
-          }
-        } catch (e) {
-          // Skip failed tokens
-        }
-        
-        // Add small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      if (enrichedTokens.length > 0) {
-        // Sort by trade count (most active)
-        enrichedTokens.sort((a, b) => (b.tradeCount || 0) - (a.tradeCount || 0));
-        cachedApiTrending = enrichedTokens;
-        lastApiFetch = now;
-        console.log(`[PumpFun] Fetched ${cachedApiTrending.length} trending tokens from DexScreener`);
-      }
-    }
-    
-    return cachedApiTrending;
-  } catch (error) {
-    console.error("[PumpFun] Error fetching trending from DexScreener:", error);
-    return cachedApiTrending;
-  }
-}
-
 export function initPumpfunStream() {
   connectWebSocket();
-  // Initial fetch of trending tokens
-  fetchTrendingFromApi();
+  void marketFeed.refresh();
 }
 
 export function getRecentTokens(): PumpfunToken[] {
   return recentTokens;
 }
 
-export async function getTrendingTokensAsync(): Promise<PumpfunToken[]> {
-  // First try to get from Pump.fun API (king of the hill = trending tokens)
-  const apiTrending = await fetchTrendingFromApi();
-  if (apiTrending.length > 0) {
-    return apiTrending;
-  }
-  
-  // Fallback to WebSocket-tracked tokens sorted by trade count
-  const trending = Array.from(tradeData.values())
-    .filter(t => t.tradeCount > 1) // Only tokens with actual trades
-    .sort((a, b) => b.tradeCount - a.tradeCount)
-    .slice(0, MAX_TRENDING)
-    .map(t => ({
-      mint: t.mint,
-      name: t.name,
-      symbol: t.symbol,
-      uri: "",
-      image: t.image,
-      creator: "",
-      timestamp: t.lastTradeTime,
-      tradeCount: t.tradeCount,
-      volume: t.volume,
-      lastPrice: t.lastPrice,
-      priceChange: t.firstPrice > 0 ? ((t.lastPrice - t.firstPrice) / t.firstPrice) * 100 : 0,
-      marketCapSol: t.lastPrice,
-      description: t.description,
-      twitter: t.twitter,
-      telegram: t.telegram,
-      website: t.website,
-    }));
-  
-  return trending;
+export async function getTrendingTokensAsync(ranking: MarketRanking = "trending"): Promise<PumpfunToken[]> {
+  await marketFeed.refresh();
+  return marketFeed.ranked(ranking);
 }
 
 // Sync version for compatibility
 export function getTrendingTokens(): PumpfunToken[] {
-  // Return cached API tokens if available
-  if (cachedApiTrending.length > 0) {
-    return cachedApiTrending;
-  }
-  
-  // Fallback to WebSocket-tracked tokens
-  return Array.from(tradeData.values())
-    .filter(t => t.tradeCount > 1)
-    .sort((a, b) => b.tradeCount - a.tradeCount)
-    .slice(0, MAX_TRENDING)
-    .map(t => ({
-      mint: t.mint,
-      name: t.name,
-      symbol: t.symbol,
-      uri: "",
-      image: t.image,
-      creator: "",
-      timestamp: t.lastTradeTime,
-      tradeCount: t.tradeCount,
-      volume: t.volume,
-      lastPrice: t.lastPrice,
-      priceChange: t.firstPrice > 0 ? ((t.lastPrice - t.firstPrice) / t.firstPrice) * 100 : 0,
-      marketCapSol: t.lastPrice,
-      description: t.description,
-      twitter: t.twitter,
-      telegram: t.telegram,
-      website: t.website,
-    }));
+  return marketFeed.ranked("trending");
 }
 
-export function getTopMovers(): PumpfunToken[] {
-  // Use DexScreener API data sorted by volume (biggest movers)
-  if (cachedApiTrending.length > 0) {
-    const movers = [...cachedApiTrending]
-      .sort((a, b) => (b.volume || 0) - (a.volume || 0))
-      .slice(0, MAX_TRENDING);
-    return movers;
-  }
-  
-  // Fallback to WebSocket-tracked tokens sorted by volume
-  const movers = Array.from(tradeData.values())
-    .filter(t => t.volume > 0.5) // Minimum 0.5 SOL volume
-    .sort((a, b) => b.volume - a.volume)
-    .slice(0, MAX_TRENDING)
-    .map(t => ({
-      mint: t.mint,
-      name: t.name,
-      symbol: t.symbol,
-      uri: "",
-      image: t.image,
-      creator: "",
-      timestamp: t.lastTradeTime,
-      tradeCount: t.tradeCount,
-      volume: t.volume,
-      lastPrice: t.lastPrice,
-      priceChange: t.firstPrice > 0 ? ((t.lastPrice - t.firstPrice) / t.firstPrice) * 100 : 0,
-      marketCapSol: t.lastPrice,
-      description: t.description,
-      twitter: t.twitter,
-      telegram: t.telegram,
-      website: t.website,
-    }));
-  
-  return movers;
+export async function getTopMovers(): Promise<PumpfunToken[]> {
+  await marketFeed.refresh();
+  return marketFeed.ranked("movers");
 }
 
-export function getPumpfunConnectionStatus(): { connected: boolean; tokenCount: number; trendingCount: number } {
+export function getPumpfunConnectionStatus() {
   return {
     connected: ws !== null && ws.readyState === WebSocket.OPEN,
     tokenCount: recentTokens.length,
-    trendingCount: tradeData.size,
+    trendingCount: marketFeed.ranked("trending").length,
+    stream: { source: "PumpPortal", lastEventAt: lastNewTokenAt },
+    market: marketFeed.metadata(),
   };
 }

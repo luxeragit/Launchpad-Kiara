@@ -103,6 +103,12 @@ The KiaraFun design system uses:
 - Stores last 50 tokens in memory
 - API endpoint: GET /api/pumpfun/tokens returns { tokens, connected, tokenCount }
 - Frontend auto-refreshes every 3 seconds
+- Ranking feeds use verified Solana `pumpfun`/`pumpswap` pools from DexScreener:
+  Trending = 5m USD volume; Most Active = 5m buy+sell count; Movers = absolute
+  5m price change. Shared provider refresh is 15s, with single-flight requests,
+  explicit delayed/unavailable status and two-minute expiry. This is sampled
+  ecosystem data, not Pump.fun's official ranking. No paid trade stream is enabled.
+  See `docs/market-data.md`.
 
 ### Raydium DEX Integration
 - Auto-detects when tokens graduate from Pump.fun bonding curve (token.complete=true)

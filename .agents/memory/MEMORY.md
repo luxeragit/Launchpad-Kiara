@@ -1,2 +1,3 @@
 - [Imported setup boundaries](imported-setup.md) — preserve network behavior during setup; dependency upgrades may retain blocked locked transitive versions.
 - [KiaraFun product boundaries](kiarafun-product.md) — canonical character, rejected dashboard, dark terminal architecture, feature preservation and explicit Mainnet approval.
+- [Browser verification](browser-verification.md) — prefer installed Playwright Chromium; generic tools Chromium can expose CDP but leave pages blank.

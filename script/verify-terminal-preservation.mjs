@@ -10,8 +10,18 @@ const protectedFiles = [
   "server/pumpfun-deploy.ts", "server/raydium-api.ts", "server/jupiter-api.ts",
   "server/trade-orchestrator.ts", "server/autobuy.ts", "server/autosell.ts",
 ];
+// Approved read-only market corrections: exactly five discovery-route edits.
+// Every other route byte (auth, wallets, finance, automation) stays protected.
+const normalizeMarketRouteEdits = (source) => source
+  .replace("// Verified Pump.fun/PumpSwap markets; explicit five-minute ranking.", "// Pumpfun trending tokens (most traded)")
+  .replace('app.get("/api/pumpfun/trending", async (req, res)', 'app.get("/api/pumpfun/trending", async (_req, res)')
+  .replace('getTrendingTokensAsync(req.query.sort === "activity" ? "activity" : "trending")', "getTrendingTokensAsync()")
+  .replace("// Largest absolute five-minute price changes, not volume.", "// Pumpfun top movers (highest volume)")
+  .replace("const tokens = await getTopMovers();", "const tokens = getTopMovers();");
 for (const path of protectedFiles) {
-  assert.equal(await readFile(path, "utf8"), original(path), `Protected implementation changed: ${path}`);
+  const current = await readFile(path, "utf8");
+  assert.equal(path === "server/routes.ts" ? normalizeMarketRouteEdits(current) : current,
+    original(path), `Protected implementation changed: ${path}`);
 }
 const routes = (text) => [...text.matchAll(/app\.(get|post|put|patch|delete)\("([^"]+)"/g)].map((match) => `${match[1]} ${match[2]}`);
 const expectedRoutes = routes(original("server/routes.ts"));
@@ -33,6 +43,6 @@ assert.deepEqual(missing, [], "An original mutation requires manual preservation
 for (const path of ['path="/"', 'path="/deploy"', 'path="/deploy/:id"', 'path="/wallets"', 'path="/docs"', 'path="/my-tokens"', 'path="/monitor"']) {
   assert.ok(client.includes(path), `Lost deep link: ${path}`);
 }
-console.log(`PASS: ${protectedFiles.length} protected backend/schema modules unchanged; ${expectedRoutes.length} endpoints retained.`);
+console.log(`PASS: ${protectedFiles.length - 1} protected backend/schema modules byte-identical; only five approved read-only market-route edits; ${expectedRoutes.length} endpoints retained.`);
 console.log(`PASS: ${before.length} original mutation identifiers retained across reachable client source; legacy and added routes retained.`);
 console.log("This static inventory is supplemental; it does not prove UI reachability or live transaction execution.");

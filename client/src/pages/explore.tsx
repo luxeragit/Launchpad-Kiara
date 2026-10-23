@@ -22,12 +22,18 @@ interface MarketToken {
   lastPrice?: number;
   priceChange?: number;
   marketCapSol?: number;
+  metricWindow?: "5m" | "24h";
   description?: string;
   twitter?: string;
   telegram?: string;
   website?: string;
 }
-interface FeedResponse { tokens: MarketToken[]; connected: boolean; tokenCount?: number }
+interface FeedResponse {
+  tokens: MarketToken[]; connected: boolean; tokenCount?: number;
+  stream?: { source: string; lastEventAt: number | null };
+  market?: { source: string; scope: string; window: string; updatedAt: number | null;
+    status: "fresh" | "stale" | "unavailable"; error: string | null; coverage: string };
+}
 interface TokenSearchResponse {
   found: boolean; source: string; token: {
     mint: string; name: string; symbol: string; image: string | null; description: string | null;
@@ -51,6 +57,7 @@ function metric(value?: number, unit = "") {
   return `${unit}${value.toFixed(value < 1 ? 4 : 0)}`;
 }
 function since(timestamp: number) {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return "—";
   const ms = Date.now() - timestamp;
   if (ms < 60_000) return "Just now";
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
@@ -70,7 +77,7 @@ function TokenRow({ token, rank, metricLabel, metricValue, onSelect, onCopy, onB
   token: MarketToken; rank?: number; metricLabel?: string; metricValue?: string; onSelect: () => void; onCopy: (mint: string) => void; onBuy: () => void; canBuy: boolean;
 }) {
   const gain = typeof token.priceChange === "number" ? token.priceChange >= 0 : undefined;
-  return <article data-testid={`market-token-row-${token.mint}`} onClick={onSelect} onKeyDown={(e) => e.key === "Enter" && onSelect()} tabIndex={0} role="button" className="group flex min-h-[68px] cursor-pointer items-center gap-2.5 border-b border-border/80 px-3 py-2 transition-colors hover:bg-[#151820] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/50">
+  return <article data-testid={`market-token-row-${token.mint}`} data-trades={token.tradeCount} data-volume={token.volume} data-change={token.priceChange} data-observed-at={token.timestamp} onClick={onSelect} onKeyDown={(e) => e.key === "Enter" && onSelect()} tabIndex={0} role="button" className="group flex min-h-[68px] cursor-pointer items-center gap-2.5 border-b border-border/80 px-3 py-2 transition-colors hover:bg-[#151820] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/50">
     {rank !== undefined && <span className="w-4 shrink-0 font-mono text-[10px] text-muted-foreground">{String(rank + 1).padStart(2, "0")}</span>}
     <TokenMark token={token} />
     <div className="min-w-0 flex-1">
@@ -79,11 +86,12 @@ function TokenRow({ token, rank, metricLabel, metricValue, onSelect, onCopy, onB
         <span className="shrink-0 text-[9px] text-muted-foreground">{token.symbol}</span>
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
-        <span className="font-mono">{shortMint(token.mint)}</span><span>·</span><span>{since(token.timestamp)}</span>
+        <span className="font-mono">{shortMint(token.mint)}</span><span>·</span><span title={token.metricWindow ? "Pool age, not token launch age" : "Token first observed"}>{since(token.timestamp)}</span>
         {token.twitter && <a href={token.twitter.startsWith("http") ? token.twitter : `https://x.com/${token.twitter}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`${token.symbol} social link`} className="text-muted-foreground hover:text-sky-300"><ExternalLink className="h-2.5 w-2.5" /></a>}
         {token.telegram && <a href={token.telegram.startsWith("http") ? token.telegram : `https://t.me/${token.telegram}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`${token.symbol} Telegram`} className="text-muted-foreground hover:text-sky-300"><ExternalLink className="h-2.5 w-2.5" /></a>}
         {token.website && <a href={token.website.startsWith("http") ? token.website : `https://${token.website}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`${token.symbol} website`} className="text-muted-foreground hover:text-sky-300"><Globe2 className="h-2.5 w-2.5" /></a>}
       </div>
+      {metricLabel && <div className="mt-0.5 truncate text-[9px] text-muted-foreground sm:hidden">{metricLabel} <span className="font-mono text-foreground">{metricValue}</span></div>}
     </div>
     <div className="hidden w-[74px] shrink-0 text-right sm:block">
       <div className="text-[8px] text-muted-foreground">{metricLabel ?? "MCap · SOL"}</div>
@@ -103,6 +111,11 @@ export default function ExplorePage() {
   const network = useNetworkStatus();
   const canTransact = !!network.data?.transactionsEnabled && !network.isError;
   const [category, setCategory] = useState<Category>("Trending");
+  const [clock, setClock] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [rankBy, setRankBy] = useState<RankBy>("movers");
   const [panelTab, setPanelTab] = useState<PanelTab>("trending");
   const [selectedToken, setSelectedToken] = useState<MarketToken | null>(null);
@@ -117,6 +130,7 @@ export default function ExplorePage() {
   const { data: tokensFeed, isLoading: loadingTokens, isError: tokenError, refetch: refetchTokens } = useQuery<FeedResponse>({ queryKey: ["/api/pumpfun/tokens"], refetchInterval: 3000 });
   const { data: trendingFeed, isLoading: loadingTrending, isError: trendingError, refetch: refetchTrending } = useQuery<FeedResponse>({ queryKey: ["/api/pumpfun/trending"], refetchInterval: 3000 });
   const { data: moversFeed, isLoading: loadingMovers, isError: moversError, refetch: refetchMovers } = useQuery<FeedResponse>({ queryKey: ["/api/pumpfun/movers"], refetchInterval: 3000 });
+  const { data: activeFeed, isLoading: loadingActive, isError: activeError, refetch: refetchActive } = useQuery<FeedResponse>({ queryKey: ["/api/pumpfun/trending?sort=activity"], refetchInterval: 3000 });
   const { data: wallets } = useQuery<Wallet[]>({ queryKey: ["/api/wallets"], enabled: isAuthenticated });
   const { data: settings } = useQuery<TradeSetting>({ queryKey: ["/api/trade/settings"], enabled: isAuthenticated });
   const {
@@ -155,21 +169,20 @@ export default function ExplorePage() {
       return trending;
     }
     if (category === "Top Movers") {
-      const movers = moversFeed?.tokens ?? [];
-      return movers.length ? movers : [...(tokensFeed?.tokens ?? [])].filter((token) => token.priceChange !== undefined).sort((a, b) => (b.priceChange ?? 0) - (a.priceChange ?? 0));
+      return moversFeed?.tokens ?? [];
     }
     if (category === "New") return [...(tokensFeed?.tokens ?? [])].sort((a, b) => b.timestamp - a.timestamp);
-    return [...(tokensFeed?.tokens ?? [])].sort((a, b) => (b.tradeCount ?? 0) - (a.tradeCount ?? 0));
-  }, [category, trendingFeed?.tokens, moversFeed?.tokens, tokensFeed?.tokens]);
+    return activeFeed?.tokens ?? [];
+  }, [category, trendingFeed?.tokens, moversFeed?.tokens, tokensFeed?.tokens, activeFeed?.tokens]);
   const displayTokens = getTokensForCategory();
   const activityTokens = useMemo(() => [...(tokensFeed?.tokens ?? [])].sort((a, b) => b.timestamp - a.timestamp), [tokensFeed?.tokens]);
   const rankedTokens = useMemo(() => {
-    const all = [...(trendingFeed?.tokens ?? []), ...(moversFeed?.tokens ?? []), ...(tokensFeed?.tokens ?? [])];
+    const all = [...(trendingFeed?.tokens ?? []), ...(moversFeed?.tokens ?? []), ...(activeFeed?.tokens ?? [])];
     const unique = Array.from(new Map(all.map((token) => [token.mint, token])).values());
     if (rankBy === "volume") return unique.filter((token) => token.volume !== undefined).sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
     if (rankBy === "trades") return unique.filter((token) => token.tradeCount !== undefined).sort((a, b) => (b.tradeCount ?? 0) - (a.tradeCount ?? 0));
-    return unique.filter((token) => token.priceChange !== undefined).sort((a, b) => (b.priceChange ?? 0) - (a.priceChange ?? 0));
-  }, [trendingFeed?.tokens, moversFeed?.tokens, tokensFeed?.tokens, rankBy]);
+    return unique.filter((token) => token.priceChange !== undefined).sort((a, b) => Math.abs(b.priceChange ?? 0) - Math.abs(a.priceChange ?? 0));
+  }, [trendingFeed?.tokens, moversFeed?.tokens, activeFeed?.tokens, rankBy]);
 
   const buyMutation = useMutation({
     mutationFn: async (token: MarketToken) => {
@@ -266,7 +279,7 @@ export default function ExplorePage() {
       const token = result.token;
       setSelectedToken({
         mint: token.mint, name: token.name, symbol: token.symbol, image: token.image, timestamp: Date.now(),
-        priceChange: token.priceChange24h, volume: token.volume24h, marketCapSol: undefined, description: token.description ?? undefined,
+        priceChange: token.priceChange24h, volume: token.volume24h, metricWindow: "24h", marketCapSol: undefined, description: token.description ?? undefined,
         twitter: token.twitter ?? undefined, telegram: token.telegram ?? undefined, website: token.website ?? undefined,
       });
       setInspectorTradeMode("buy");
@@ -291,11 +304,18 @@ export default function ExplorePage() {
     return () => window.removeEventListener("kiara:mint-search", onMint);
   }, [lookupMint]);
 
-  const marketLoading = displayTokens.length === 0 && (category === "Trending" ? loadingTrending : category === "Top Movers" ? loadingMovers || loadingTokens : loadingTokens);
-  const marketError = displayTokens.length === 0 && (category === "Trending" ? trendingError : category === "Top Movers" ? moversError && tokenError : tokenError);
+  const currentFeed = category === "New" ? tokensFeed : category === "Trending" ? trendingFeed : category === "Most Active" ? activeFeed : moversFeed;
+  const marketLoading = displayTokens.length === 0 && (category === "Trending" ? loadingTrending : category === "Top Movers" ? loadingMovers : category === "Most Active" ? loadingActive : loadingTokens);
+  const marketError = category === "Trending" ? trendingError : category === "Top Movers" ? moversError : category === "Most Active" ? activeError : tokenError;
+  const freshness = currentFeed?.market;
+  const updateAge = freshness?.updatedAt ? Math.max(0, Math.floor((clock - freshness.updatedAt) / 1000)) : null;
+  const feedHealthy = !marketError && (category === "New" ? !!tokensFeed?.connected : freshness?.status === "fresh");
+  const feedState = marketError ? "Unavailable" : category === "New" ? tokensFeed?.connected ? "Connected" : "Disconnected" :
+    freshness?.status === "stale" ? "Delayed" : freshness?.status === "unavailable" ? "Unavailable" : updateAge !== null ? `Updated ${updateAge}s ago` : "Connecting";
   const retryMarket = () => {
     if (category === "Trending") void refetchTrending();
     else if (category === "Top Movers") void refetchMovers();
+    else if (category === "Most Active") void refetchActive();
     else void refetchTokens();
   };
   const buyEnabled = isAuthenticated && !!selectedWallet && canTransact && Number(amount) > 0 && !buyMutation.isPending;
@@ -341,15 +361,19 @@ export default function ExplorePage() {
       }>
         <div className="border-b border-border px-2 py-2">
           <div className="flex items-center gap-1 overflow-x-auto">
-            {(["Trending", "New", "Most Active", "Top Movers"] as Category[]).map((value) => <button key={value} type="button" onClick={() => setCategory(value)} className={`shrink-0 px-2 py-1 text-[11px] ${category === value ? "bg-[#1b202a] text-sky-300" : "text-muted-foreground hover:text-foreground"}`}>{value}</button>)}
-            <span className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground"><ArrowDownUp className="h-3 w-3" />LIVE</span>
+            {(["Trending", "New", "Most Active", "Top Movers"] as Category[]).map((value) => <button key={value} type="button" data-testid={`market-category-${value.toLowerCase().replaceAll(" ", "-")}`} aria-pressed={category === value} onClick={() => setCategory(value)} title={value === "Trending" ? "Ranked by five-minute USD volume" : value === "Most Active" ? "Ranked by five-minute buy and sell count" : value === "Top Movers" ? "Ranked by absolute five-minute price change" : "New token creation events via PumpPortal"} className={`shrink-0 px-2 py-1 text-[11px] ${category === value ? "bg-[#1b202a] text-sky-300" : "text-muted-foreground hover:text-foreground"}`}>{value}</button>)}
           </div>
+          <div data-testid="market-feed-status" data-state={feedHealthy ? "fresh" : "delayed"} data-updated-at={freshness?.updatedAt} title={category === "New" ? "Free PumpPortal new-token stream; polled every 3 seconds" : freshness?.error || freshness?.coverage || "Sampled verified pools; not the official Pump.fun ranking"} className="mt-1.5 flex min-w-0 items-center justify-between gap-2 text-[9px] text-muted-foreground">
+            <span className="truncate">{category === "New" ? "PumpPortal · New tokens" : "Pump.fun / PumpSwap · DexScreener · 5m"}</span>
+            <span className={`shrink-0 ${feedHealthy ? "text-emerald-400" : "text-amber-300"}`}>{feedState}</span>
+          </div>
+          {category === "New" && tokensFeed?.stream?.lastEventAt && <div className="mt-1 text-[9px] text-muted-foreground">Last token {Math.max(0, Math.floor((clock - tokensFeed.stream.lastEventAt) / 1000))}s ago</div>}
         </div>
         <div data-testid="panel-scroll" className="terminal-scroll">
           {marketLoading && displayTokens.length === 0 ? <div className="space-y-0">{Array.from({ length: 6 }, (_, i) => <div key={i} className="flex h-[68px] items-center gap-3 border-b border-border px-3"><div className="h-9 w-9 animate-pulse bg-[#1b202a]" /><div className="flex-1"><div className="mb-2 h-2 w-24 animate-pulse bg-[#1b202a]" /><div className="h-2 w-16 animate-pulse bg-[#1b202a]" /></div></div>)}</div>
             : marketError ? <TerminalEmpty title="Market feed unavailable" detail="The public data provider could not be reached." retry={retryMarket} />
-            : displayTokens.length ? displayTokens.map((token) => <TokenRow key={token.mint} token={token} onSelect={() => selectToken(token)} onCopy={copyMint} onBuy={() => buyMutation.mutate(token)} canBuy={buyEnabled} />)
-            : <TerminalEmpty title="No tokens in this feed" detail="Try another data-backed market view or refresh." />}
+            : displayTokens.length ? displayTokens.map((token) => <TokenRow key={token.mint} token={token} metricLabel={category === "New" ? undefined : category === "Most Active" ? "Trades · 5m" : "Volume · 5m"} metricValue={category === "Most Active" ? metric(token.tradeCount) : metric(token.volume, "$")} onSelect={() => selectToken(token)} onCopy={copyMint} onBuy={() => buyMutation.mutate(token)} canBuy={buyEnabled} />)
+            : <TerminalEmpty title={freshness?.status === "unavailable" && category !== "New" ? "Market data unavailable" : "No tokens in this feed"} detail={category === "New" ? "Waiting for new token events. Connection status is shown above." : "Waiting for verified Pump.fun/PumpSwap pools with five-minute metrics."} retry={retryMarket} />}
         </div>
       </TerminalPanel>
 
@@ -384,11 +408,11 @@ export default function ExplorePage() {
           <option value="movers">Top movers</option><option value="volume">Volume</option><option value="trades">Most active</option>
         </select>
       }>
-        <div className="flex items-center justify-between border-b border-border px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground"><span>Token · Ranked by {rankBy === "movers" ? "change" : rankBy}</span><span>{rankBy === "movers" ? "Change" : rankBy === "volume" ? "Volume" : "Trades"}</span></div>
+        <div className="flex items-center justify-between border-b border-border px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground"><span>Ranked by {rankBy === "movers" ? "absolute change" : rankBy} · 5m</span><span>{rankBy === "movers" ? "Change" : rankBy === "volume" ? "Volume · USD" : "Trades"}</span></div>
         <div data-testid="panel-scroll" className="terminal-scroll">
           {rankedTokens.length ? rankedTokens.slice(0, 60).map((token, index) => {
             const value = rankBy === "movers" ? `${(token.priceChange ?? 0) >= 0 ? "+" : ""}${token.priceChange?.toFixed(2)}%` : rankBy === "volume" ? metric(token.volume, "$") : metric(token.tradeCount);
-            return <TokenRow key={token.mint} token={token} rank={index} metricLabel={rankBy === "movers" ? "MCap · SOL" : rankBy === "volume" ? "Volume" : "Trades"} metricValue={rankBy === "movers" ? metric(token.marketCapSol) : value} onSelect={() => selectToken(token)} onCopy={copyMint} onBuy={() => buyMutation.mutate(token)} canBuy={buyEnabled} />;
+            return <TokenRow key={token.mint} token={token} rank={index} metricLabel={rankBy === "trades" ? "Trades · 5m" : "Volume · 5m"} metricValue={rankBy === "trades" ? value : metric(token.volume, "$")} onSelect={() => selectToken(token)} onCopy={copyMint} onBuy={() => buyMutation.mutate(token)} canBuy={buyEnabled} />;
           }) : <TerminalEmpty title="No ranking data yet" detail="The provider has not returned this metric for current tokens." />}
         </div>
         <footer className="border-t border-border px-3 py-2 text-[9px] text-muted-foreground">Ranked by real market feed metrics · No trader-profit claims</footer>
@@ -412,8 +436,8 @@ export default function ExplorePage() {
             <div className="min-w-0 p-3 sm:p-4">
               <div className="mb-3 grid grid-cols-3 gap-2">
                 <div className="border border-border bg-[#151820] p-2"><div className="text-[9px] text-muted-foreground">Market cap · SOL</div><div className="mt-1 font-mono text-[11px]">{metric(selectedToken.marketCapSol)}</div></div>
-                <div className="border border-border bg-[#151820] p-2"><div className="text-[9px] text-muted-foreground">Volume</div><div className="mt-1 font-mono text-[11px]">{metric(selectedToken.volume, "$")}</div></div>
-                <div className="border border-border bg-[#151820] p-2"><div className="text-[9px] text-muted-foreground">Change</div><div className={`mt-1 font-mono text-[11px] ${(selectedToken.priceChange ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{selectedToken.priceChange === undefined ? "—" : `${selectedToken.priceChange >= 0 ? "+" : ""}${selectedToken.priceChange.toFixed(2)}%`}</div></div>
+                <div className="border border-border bg-[#151820] p-2"><div className="text-[9px] text-muted-foreground">Volume{selectedToken.metricWindow ? ` · ${selectedToken.metricWindow}` : ""} · USD</div><div className="mt-1 font-mono text-[11px]">{metric(selectedToken.volume, "$")}</div></div>
+                <div className="border border-border bg-[#151820] p-2"><div className="text-[9px] text-muted-foreground">Change{selectedToken.metricWindow ? ` · ${selectedToken.metricWindow}` : ""}</div><div className={`mt-1 font-mono text-[11px] ${(selectedToken.priceChange ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{selectedToken.priceChange === undefined ? "—" : `${selectedToken.priceChange >= 0 ? "+" : ""}${selectedToken.priceChange.toFixed(2)}%`}</div></div>
               </div>
               <div className="h-[290px] overflow-hidden border border-border bg-[#0c0e13]"><PriceChart tokenMint={selectedToken.mint} height={290} /></div>
               {selectedToken.description && <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{selectedToken.description}</p>}

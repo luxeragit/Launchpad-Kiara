@@ -5,7 +5,7 @@
  * visibly labelled, never written to the application database.
  */
 import { spawn, execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import WebSocket from "ws";
 import nacl from "tweetnacl";
@@ -19,7 +19,21 @@ await mkdir(output, { recursive: true });
 const suppliedBrowser = process.argv[2];
 const existingBrowser = execFileSync("ps", ["-eo", "args"], { encoding: "utf8" }).split("\n")
   .find((line) => line.startsWith("/nix/store/") && line.includes("playwright-browsers") && line.includes("/chrome "));
-const executable = suppliedBrowser || existingBrowser?.split(" --")[0] || "/repl/tools/bin/chromium";
+async function installedPlaywrightBrowser() {
+  // The generic tools Chromium can expose CDP but leave navigation blank in
+  // this container. Find an installed compatible browser even when Screenshot's
+  // short-lived browser process is no longer present.
+  for (const root of (await readdir("/nix/store")).filter((name) => name.includes("playwright-browsers"))) {
+    const directory = `/nix/store/${root}`;
+    for (const version of (await readdir(directory)).filter((name) => name.startsWith("chromium-"))) {
+      for (const platform of ["chrome-linux", "chrome-linux64"]) {
+        const candidate = `${directory}/${version}/${platform}/chrome`;
+        try { await access(candidate); return candidate; } catch {}
+      }
+    }
+  }
+}
+const executable = suppliedBrowser || existingBrowser?.split(" --")[0] || await installedPlaywrightBrowser() || "/repl/tools/bin/chromium";
 const profile = await mkdtemp("/tmp/kiara-terminal-");
 const child = spawn(executable, ["--headless", "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
   "--disable-background-networking", "--disable-features=VizDisplayCompositor", "--ignore-certificate-errors",
@@ -67,8 +81,14 @@ async function viewport(width, height) {
   await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
 }
 async function navigate(path) {
-  await send("Page.navigate", { url: `${base}${path}` });
-  await until("document.querySelector('[data-testid=\"terminal-shell\"]') && document.querySelector('main')?.children.length");
+  const navigation = await send("Page.navigate", { url: `${base}${path}` });
+  if (navigation.errorText) throw new Error(`Preview navigation failed: ${navigation.errorText}`);
+  try {
+    await until("document.querySelector('[data-testid=\"terminal-shell\"]') && document.querySelector('main')?.children.length", 30000);
+  } catch (error) {
+    console.error("Preview navigation diagnostics:", await evaluate("({ready:document.readyState,title:document.title,text:document.body?.innerText?.slice(0,350)})"), exceptions);
+    throw error;
+  }
   // Dismiss the development host's own optional notice using its real close
   // control, just as a user can. Never remove or bypass application UI/auth.
   await evaluate(`(() => {
@@ -172,6 +192,47 @@ try {
     await until("document.querySelector('.market-ticker-track')");
     assert.equal(await evaluate("getComputedStyle(document.querySelector('.market-ticker-track')).animationName"), "market-ticker-scroll");
     await navigate("/");
+  });
+  await check("market categories use real five-minute metrics and update automatically", async () => {
+    const rows = () => evaluate(`Array.from(document.querySelectorAll('[data-testid="panel-trending"] article')).map(el=>({
+      volume:Number(el.dataset.volume),trades:Number(el.dataset.trades),change:Math.abs(Number(el.dataset.change)),time:Number(el.dataset.observedAt)
+    }))`);
+    const sorted = (data, key) => data.every((row, index) => Number.isFinite(row[key]) && (index === 0 || data[index - 1][key] >= row[key]));
+    await until("document.querySelector('[data-testid=\"panel-trending\"] article')", 30000);
+    for (const [tab, key] of [["trending", "volume"], ["most-active", "trades"], ["top-movers", "change"]]) {
+      await click(`[data-testid="market-category-${tab}"]`);
+      await until("document.querySelector('[data-testid=\"panel-trending\"] article')", 30000);
+      assert.ok(sorted(await rows(), key), `${tab} must be sorted by its own real metric`);
+      assert.ok(await evaluate("document.querySelector('[data-testid=\"market-feed-status\"]').textContent.includes('DexScreener · 5m')"));
+    }
+    await capture("market-filters-desktop");
+    await click('[data-testid="market-category-trending"]');
+    const originalUpdate = await evaluate("Number(document.querySelector('[data-testid=\"market-feed-status\"]').dataset.updatedAt)");
+    await until(`Number(document.querySelector('[data-testid="market-feed-status"]').dataset.updatedAt)>${originalUpdate}`, 40000);
+    await click('[data-testid="market-category-new"]');
+    await until("document.querySelector('[data-testid=\"panel-trending\"] article')", 30000);
+    assert.ok(sorted(await rows(), "time"));
+    assert.ok(await evaluate("document.querySelector('[data-testid=\"market-feed-status\"]').textContent.includes('PumpPortal')"));
+    await viewport(390, 844);
+    await click('[data-testid="market-category-most-active"]');
+    await until("document.querySelector('[data-testid=\"panel-trending\"] article')");
+    assert.ok(sorted(await rows(), "trades"));
+    assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true);
+    await capture("market-filters-mobile");
+    await viewport(1440, 900);
+    await click('[data-testid="market-category-trending"]');
+  });
+  await check("market source status reports an outage and recovers without a reload", async () => {
+    await navigate("/");
+    await until("document.querySelector('[data-testid=\"panel-trending\"] article')", 30000);
+    try {
+      await send("Network.setBlockedURLs", { urls: ["*/api/pumpfun/trending*"] });
+      await until("document.querySelector('[data-testid=\"market-feed-status\"]').textContent.includes('Unavailable')", 12000);
+      assert.equal(await evaluate("document.querySelector('[data-testid=\"market-feed-status\"]').dataset.state"), "delayed");
+    } finally {
+      await send("Network.setBlockedURLs", { urls: [] });
+    }
+    await until("document.querySelector('[data-testid=\"market-feed-status\"]').dataset.state === 'fresh' && document.querySelector('[data-testid=\"panel-trending\"] article')", 30000);
   });
   await check("dark terminal geometry and independent desktop scrolling", async () => {
     assert.equal(await evaluate("document.documentElement.classList.contains('dark')"), true);

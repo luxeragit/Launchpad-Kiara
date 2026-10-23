@@ -1038,10 +1038,10 @@ export async function registerRoutes(
     }
   });
 
-  // Pumpfun trending tokens (most traded)
-  app.get("/api/pumpfun/trending", async (_req, res) => {
+  // Verified Pump.fun/PumpSwap markets; explicit five-minute ranking.
+  app.get("/api/pumpfun/trending", async (req, res) => {
     try {
-      const tokens = await getTrendingTokensAsync();
+      const tokens = await getTrendingTokensAsync(req.query.sort === "activity" ? "activity" : "trending");
       const status = getPumpfunConnectionStatus();
       res.json({ tokens, ...status });
     } catch (error) {
@@ -1050,10 +1050,10 @@ export async function registerRoutes(
     }
   });
 
-  // Pumpfun top movers (highest volume)
+  // Largest absolute five-minute price changes, not volume.
   app.get("/api/pumpfun/movers", async (_req, res) => {
     try {
-      const tokens = getTopMovers();
+      const tokens = await getTopMovers();
       const status = getPumpfunConnectionStatus();
       res.json({ tokens, ...status });
     } catch (error) {

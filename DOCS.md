@@ -94,11 +94,17 @@ renamed for branding.
 - `GET /api/network/status` — credential-free network-safety summary, including
   verified state, approval state, and financial/airdrop availability.
 - `GET /api/solana/info` — existing connection-info contract.
-- `GET /api/pumpfun/tokens`
-- `GET /api/pumpfun/trending`
-- `GET /api/pumpfun/movers`
+- `GET /api/pumpfun/tokens` — new-token events via the free PumpPortal stream.
+- `GET /api/pumpfun/trending` — sampled Pump.fun/PumpSwap pools by 5m USD volume.
+- `GET /api/pumpfun/trending?sort=activity` — those pools by 5m transaction count.
+- `GET /api/pumpfun/movers` — those pools by absolute 5m price change.
 - `GET /api/pumpfun/status`
 - `GET /api/tokens/search/:mint`
+
+Market responses include source, scope, snapshot time and freshness. These are
+sampled public-provider markets, not the official Pump.fun ranking. Provider
+refresh is rate-limited to 15 seconds; errors show delayed data, expiring after
+two minutes. See `docs/market-data.md` for verification and coverage limits.
 
 ### Managed wallets
 

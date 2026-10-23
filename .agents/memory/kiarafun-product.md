@@ -59,3 +59,13 @@ fixed while the real token feed scrolls.
 
 **How to apply:** Preserve continuous ticker motion across shared-header routes,
 with a pause control and an accessible reduced-motion alternative.
+
+Market categories must be backed by distinct real metrics and visibly identify
+their source and freshness; do not imply an official global Pump.fun ranking from
+a sampled third-party feed or mark cached/disconnected data simply “LIVE”.
+
+**Why:** The user noticed that the category lists looked static and explicitly
+asked to correct their real market-data sources and filters.
+
+**How to apply:** Preserve honest source/window/status labels when extending the
+market UI; enabling any metered market-data subscription needs separate approval.
