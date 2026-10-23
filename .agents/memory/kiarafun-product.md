@@ -69,3 +69,17 @@ asked to correct their real market-data sources and filters.
 
 **How to apply:** Preserve honest source/window/status labels when extending the
 market UI; enabling any metered market-data subscription needs separate approval.
+
+External Solana wallet connection is for account authentication, not a replacement
+for the separately managed wallets used by launch and trading flows. Keep the
+connected chain aligned with the server's wallet network; never enable Mainnet
+execution as a side effect of connecting.
+
+**Why:** The user requested real Reown wallet connection while the product's
+Mainnet financial path still awaits explicit network verification and approval.
+
+**How to apply:** Keep signing limited to nonce login, preserve the existing
+server-side transaction gate, and invalidate login on account change or disconnect.
+Reown's Project ID is public browser configuration, but WalletConnect relay requires
+each preview/published origin in the Reown project's domain allowlist. Do not bypass
+the allowlist or imply a displayed QR has a working relay when origin is rejected.

@@ -50,7 +50,7 @@ export default function DeployPage() {
     queryKey: ["/api/wallets"], enabled: isAuthenticated,
   });
   const { data: deployedTokens, isLoading: tokensLoading, isError: tokensError, refetch: refetchTokens } = useQuery<TokenDeployment[]>({
-    queryKey: ["/api/tokens"], enabled: isAuthenticated,
+    queryKey: ["/api/tokens"], enabled: isAuthenticated, refetchInterval: 15_000,
   });
   const form = useForm<TokenDeployForm>({
     resolver: zodResolver(tokenDeployFormSchema), mode: "onTouched",
@@ -223,7 +223,7 @@ export default function DeployPage() {
             {authLoading ? <div className="mx-3 mb-3 h-8 animate-pulse bg-[#151820]" /> : !isAuthenticated ? <div className="mx-3 mb-3 flex items-center gap-2 text-[10px] text-muted-foreground"><Wallet className="h-3.5 w-3.5" />Connect a wallet to submit.</div> : null}
             {isAuthenticated && <div className="border-t border-[#292d36] p-3">
               <div className="mb-2 flex items-center justify-between"><span className="text-[11px] font-semibold">Recent records</span><button type="button" onClick={() => refetchTokens()} className="text-[10px] text-[#32a9ff]">{tokensLoading ? "Loading…" : "Refresh"}</button></div>
-              {tokensError ? <button type="button" onClick={() => refetchTokens()} className="text-[10px] text-rose-300">Records unavailable — retry</button> : deployedTokens?.slice(0, 4).map((token) => <Link key={token.id} href={`/deploy/${token.id}`} className="flex items-center justify-between border-t border-[#292d36] py-2 text-[10px] hover:bg-[#151820]"><span className="min-w-0 truncate">{token.name} <span className="font-mono text-muted-foreground">{token.symbol}</span></span><span className="ml-2 shrink-0 text-muted-foreground">{token.platform === "pumpfun" ? token.status : "pending config"}</span></Link>)}
+               {tokensError ? <button type="button" onClick={() => refetchTokens()} className="text-[10px] text-rose-300">Records unavailable — retry</button> : deployedTokens?.slice(0, 4).map((token) => <Link key={token.id} href={`/deploy/${token.id}`} className="flex items-center justify-between border-t border-[#292d36] py-2 text-[10px] hover:bg-[#151820]"><span className="min-w-0 truncate">{token.name} <span className="font-mono text-muted-foreground">{token.symbol}</span></span><span className="ml-2 shrink-0 text-muted-foreground">{token.platform === "pumpfun" ? token.status === "deployed" ? "Launch reported · inspect record" : token.status === "failed" ? "Launch failed" : "Pending" : "Pending config"}</span></Link>)}
               {!tokensLoading && !tokensError && !deployedTokens?.length && <p className="text-[10px] text-muted-foreground">No launch records yet.</p>}
             </div>}
           </div>

@@ -43,6 +43,7 @@ const pending = new Map();
 const eventHandlers = new Map();
 let socket, sequence = 0, identityId;
 const identity = nacl.sign.keyPair();
+const alternateIdentity = nacl.sign.keyPair();
 const address = bs58.encode(identity.publicKey);
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const results = [], exceptions = [], forbiddenRequests = [];
@@ -55,6 +56,11 @@ const fixtureRecord = {
   txSignature: null, walletId: null, createdAt: "2026-10-22T00:00:00.000Z",
   burnPercent: 20, ammPercent: 30, creatorPercent: 25, liquidityPercent: 25,
   totalFeesCollected: 0, totalFeesDistributed: 0, totalBurned: 0, autoClaimEnabled: false,
+};
+const testWalletAddress = bs58.encode(identity.publicKey);
+const testWalletAccount = {
+  address: testWalletAddress, publicKey: Array.from(identity.publicKey),
+  chains: ["solana:devnet"], features: ["solana:signMessage", "solana:signTransaction"],
 };
 function send(method, params = {}) {
   return new Promise((resolve, reject) => {
@@ -146,7 +152,14 @@ try {
       pending.delete(event.id);
       if (event.error) callback.reject(new Error(event.error.message)); else callback.resolve(event.result);
     }
-    if (event.method === "Runtime.exceptionThrown") exceptions.push(event.params.exceptionDetails.text);
+    if (event.method === "Runtime.exceptionThrown") exceptions.push(event.params.exceptionDetails.exception?.description || event.params.exceptionDetails.text);
+    if (event.method === "Runtime.bindingCalled" && event.params.name === "signWalletTestMessage") {
+      const { id, bytes } = JSON.parse(event.params.payload);
+      const signature = Array.from(nacl.sign.detached(Uint8Array.from(bytes), identity.secretKey));
+      void send("Runtime.evaluate", {
+        expression: `window.resolveWalletTestSignature(${JSON.stringify(id)}, ${JSON.stringify(signature)})`,
+      }).catch((error) => exceptions.push(error.message));
+    }
     if (event.method === "Network.requestWillBeSent") {
       const { method, url } = event.params.request;
       if (method !== "GET" && /\/api\/(trade\/(buy|sell)|monitoring\/start|autosell\/start|tokens\/deploy|wallets\/(export|transfer|fund|consolidate|burn))/.test(url)) forbiddenRequests.push(new URL(url).pathname);
@@ -155,8 +168,116 @@ try {
     if (handler) Promise.resolve(handler(event.params)).catch((error) => exceptions.push(error.message));
   });
   await send("Page.enable"); await send("Runtime.enable"); await send("Network.enable");
+  await send("Runtime.addBinding", { name: "signWalletTestMessage" });
   await viewport(1440, 900);
   await navigate("/");
+  await evaluate(`window.deepWalletElements = (root=document) =>
+    [...root.querySelectorAll('*')].flatMap(el => [el, ...(el.shadowRoot ? window.deepWalletElements(el.shadowRoot) : [])]); true`);
+  await check("Reown opens real wallet selection, cancels, and opens a WalletConnect QR", async () => {
+    await until("document.querySelector('[data-testid=\"button-connect-wallet\"]')", 40000);
+    await click('[data-testid="button-connect-wallet"]');
+    await until("document.querySelector('w3m-modal')?.open", 60000);
+    await capture("reown-wallet-selection-desktop");
+    await until("deepWalletElements().some(el => el.textContent?.includes('WalletConnect'))", 20000);
+    assert.equal(await evaluate("fetch('/api/auth/session').then(r=>r.json()).then(r=>r.authenticated)"), false);
+    await evaluate("import('/src/lib/reown.ts').then(async m => (await m.getWalletKit()).close())");
+    await until("document.querySelector('[data-testid=\"button-connect-wallet\"]')");
+    await until("document.querySelector('[data-testid=\"text-wallet-error\"]')?.textContent.includes('cancelled')");
+    await viewport(390, 844);
+    await click('[data-testid="button-connect-wallet"]');
+    await until("document.querySelector('w3m-modal')?.open");
+    await until("deepWalletElements().some(el => el.getAttribute('data-testid') === 'wallet-selector-walletconnect')", 20000);
+    await evaluate("deepWalletElements().find(el=>el.getAttribute('data-testid')==='wallet-selector-walletconnect').click()");
+    await pause(1500);
+    await capture("reown-walletconnect-mobile");
+    await until("deepWalletElements().some(el => /qrcode|qr-code/i.test(el.tagName))", 30000);
+    assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true);
+    await evaluate("import('/src/lib/reown.ts').then(async m => (await m.getWalletKit()).close())");
+    await until("document.querySelector('[data-testid=\"button-connect-wallet\"]')");
+    await viewport(1440, 900);
+  });
+  await check("Reown signs in with a browser-only Solana wallet and logs out", async () => {
+    await evaluate(`(() => {
+      const account = ${JSON.stringify(testWalletAccount)};
+      account.publicKey = Uint8Array.from(account.publicKey);
+      const callbacks = new Set();
+      let requestId = 0;
+      const requests = new Map();
+      window.resolveWalletTestSignature = (id, signature) => {
+        requests.get(id)?.(Uint8Array.from(signature)); requests.delete(id);
+      };
+      const wallet = {
+        version: "1.0.0", name: "Kiara Browser Test Wallet",
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%232c2c2c'/></svg>",
+        chains: ["solana:devnet"], accounts: [],
+        features: {
+          "standard:connect": { version: "1.0.0", connect: async () => {
+            wallet.accounts = [account];
+            for (const callback of callbacks) callback({ accounts: wallet.accounts });
+            return { accounts: wallet.accounts };
+          } },
+          "standard:disconnect": { version: "1.0.0", disconnect: async () => {
+            wallet.accounts = [];
+            for (const callback of callbacks) callback({ accounts: [] });
+          } },
+          "standard:events": { version: "1.0.0", on: (_event, callback) => {
+            callbacks.add(callback); return () => callbacks.delete(callback);
+          } },
+          "solana:signMessage": { version: "1.0.0", signMessage: async ({ message }) => {
+            const id = ++requestId;
+            const signature = await new Promise(resolve => {
+              requests.set(id, resolve);
+              window.signWalletTestMessage(JSON.stringify({id, bytes: Array.from(message)}));
+            });
+            return [{ signedMessage: message, signature }];
+          } },
+          // Exposed solely to meet wallet-standard's detection rule. Any call
+          // is a test failure; never sign or send a transaction in this suite.
+          "solana:signTransaction": { version: "1.0.0", signTransaction: async () => {
+            throw new Error("A transaction was unexpectedly requested");
+          } },
+        },
+      };
+      window.browserTestWallet = {
+        restore: () => {
+          wallet.accounts = [account];
+          for (const callback of callbacks) callback({ accounts: wallet.accounts });
+        },
+        changeAccount: bytes => {
+          const changed = { ...account, address: bytes.address, publicKey: Uint8Array.from(bytes.publicKey) };
+          wallet.accounts = [changed];
+          for (const callback of callbacks) callback({ accounts: wallet.accounts });
+        },
+      };
+      window.dispatchEvent(new CustomEvent("wallet-standard:register-wallet", {
+        detail: api => api.register(wallet),
+      }));
+    })()`);
+    await click('[data-testid="button-connect-wallet"]');
+    await until("document.querySelector('w3m-modal')?.open");
+    await until("deepWalletElements().some(el=>el.getAttribute('name')==='Kiara Browser Test Wallet')", 20000);
+    await evaluate("deepWalletElements().find(el=>el.getAttribute('name')==='Kiara Browser Test Wallet').click()");
+    await until("document.querySelector('[data-testid=\"button-wallet-connected\"]')", 25000);
+    assert.equal(await evaluate("fetch('/api/auth/session').then(r=>r.json()).then(r=>r.user?.walletAddress)"), testWalletAddress);
+    await evaluate(`window.browserTestWallet.changeAccount(${JSON.stringify({
+      address: bs58.encode(alternateIdentity.publicKey),
+      publicKey: Array.from(alternateIdentity.publicKey),
+    })})`);
+    await pause(400);
+    await until("document.querySelector('[data-testid=\"button-connect-wallet\"]')");
+    await until("document.querySelector('[data-testid=\"text-wallet-error\"]')?.textContent.includes('Wallet changed')");
+    await until("fetch('/api/auth/session').then(r=>r.json()).then(r=>!r.authenticated)");
+    await evaluate("window.browserTestWallet.restore()");
+    await click('[data-testid="button-connect-wallet"]');
+    await until("document.querySelector('[data-testid=\"button-wallet-connected\"]')", 25000);
+    assert.equal(await evaluate("fetch('/api/auth/session').then(r=>r.json()).then(r=>r.user?.walletAddress)"), testWalletAddress);
+    await evaluate("document.querySelector('[data-testid=\"button-wallet-connected\"]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',button:0}))");
+    await click('[data-testid="button-disconnect-wallet"]');
+    await until("document.querySelector('[data-testid=\"button-connect-wallet\"]')");
+    assert.equal(await evaluate("fetch('/api/auth/session').then(r=>r.json()).then(r=>r.authenticated)"), false);
+    await navigate("/");
+    assert.equal(await evaluate("Boolean(document.querySelector('[data-testid=\"button-wallet-connected\"]'))"), false);
+  });
   await evaluate("localStorage.removeItem('theme')");
   await navigate("/");
   await check("market ticker moves continuously, pauses, and respects reduced motion", async () => {
@@ -384,7 +505,7 @@ try {
   child.kill("SIGTERM");
   if (identityId) await pool.query("DELETE FROM session WHERE sess->>'userId' = $1", [identityId]);
   await pool.query("DELETE FROM users WHERE wallet_address = $1 AND ($2::text IS NULL OR id::text = $2)", [address, identityId ?? null]);
-  identity.secretKey.fill(0); await pool.end();
+  identity.secretKey.fill(0); alternateIdentity.secretKey.fill(0); await pool.end();
   await rm(profile, { recursive: true, force: true }).catch(() => {});
   let mergedResults = results, mergedGeometry = geometry;
   if (only) {

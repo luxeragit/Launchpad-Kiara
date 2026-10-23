@@ -18,10 +18,19 @@ external integrations, not a trading simulator.
 
 ### Connect versus import
 
-Connect Phantom or Solflare to sign the authentication message. Connecting proves
+Connect a Solana wallet through Reown AppKit (installed wallets or WalletConnect
+QR/mobile linking), then sign the authentication message. Connecting proves
 ownership of the external wallet; it does **not** import its private key.
 Creating or importing a managed wallet is a separate action. Imported private
 keys are encrypted by the server using the existing encryption implementation.
+
+The public browser configuration `VITE_REOWN_PROJECT_ID` must contain the Reown
+Project ID at build time. Allow the exact preview and published origins in the
+Reown project's domain allowlist. Metadata uses the current origin; never put a
+secret API key in a `VITE_` variable. Wallet networking follows the existing server
+wallet network, without changing RPC configuration or financial approval.
+Account changes/disconnection clear private client caches and end the login
+session; a new account must explicitly sign in again.
 
 Private keys must never be included in screenshots, logs, telemetry, or support
 messages. Reveal and export them only deliberately, on a trusted device.

@@ -5,6 +5,7 @@ import { WalletConnectButton } from "@/components/wallet-connect-button";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { SiX } from "react-icons/si";
 
 interface MarketToken {
   mint: string;
@@ -123,6 +124,7 @@ export function Navbar() {
         </Link>)}
       </nav>
       <div className="flex flex-col items-center gap-1">
+        <a href="https://x.com/kiara_fun" target="_blank" rel="noopener noreferrer" title="KiaraFun on X" aria-label="KiaraFun on X (opens in a new tab)" data-testid="link-kiarafun-x-desktop" className="flex h-9 w-9 items-center justify-center rounded-md text-[#858c9a] hover:bg-[#151820] hover:text-foreground"><SiX className="h-3.5 w-3.5" /></a>
         <button type="button" onClick={toggleTheme} title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} aria-label="Toggle theme" className="flex h-9 w-9 items-center justify-center rounded-md text-[#858c9a] hover:bg-[#151820] hover:text-foreground">{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
         <RailNetworkStatus />
       </div>
@@ -135,6 +137,7 @@ export function Navbar() {
       </form>
       <div className="flex shrink-0 items-center gap-2">
         <NetworkControl />
+        <a href="https://x.com/kiara_fun" target="_blank" rel="noopener noreferrer" title="KiaraFun on X" aria-label="KiaraFun on X (opens in a new tab)" data-testid="link-kiarafun-x-mobile" className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground hover:bg-[#151820] hover:text-foreground sm:hidden"><SiX className="h-3 w-3" /></a>
         <button type="button" onClick={toggleTheme} title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} aria-label="Toggle theme" className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground hover:bg-[#151820] hover:text-foreground sm:hidden">{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
         <Link href="/deploy" className="hidden h-8 items-center gap-1.5 border border-border px-2.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-[#1b202a] sm:flex"><Plus className="h-3.5 w-3.5 text-sky-400" />Create</Link>
         <div className="[&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px]"><WalletConnectButton compact /></div>

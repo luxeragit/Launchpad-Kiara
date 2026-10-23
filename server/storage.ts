@@ -137,7 +137,9 @@ export class DatabaseStorage implements IStorage {
     if (!userId) {
       throw new Error("userId is required for getTokenDeployments");
     }
-    return await db.select().from(tokenDeployments).where(eq(tokenDeployments.userId, userId));
+    return await db.select().from(tokenDeployments)
+      .where(eq(tokenDeployments.userId, userId))
+      .orderBy(desc(tokenDeployments.createdAt));
   }
 
   async getTokenDeployment(id: string, userId: string): Promise<TokenDeployment | undefined> {

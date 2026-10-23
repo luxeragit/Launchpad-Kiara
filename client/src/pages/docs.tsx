@@ -79,7 +79,7 @@ export default function DocsPage() {
             <section id="quick-start" className="scroll-mt-3 border-b border-[#292d36] py-5">
               <SectionKicker>01 / GET STARTED</SectionKicker><h2 className="mb-3 text-[15px] font-semibold">Quick start</h2>
               <ol className="divide-y divide-[#292d36] border-y border-[#292d36]">
-                <Step number="01" title="Connect a wallet" detail="Use the wallet connection flow and authorize with Phantom or Solflare. Authentication verifies a wallet signature." />
+                <Step number="01" title="Connect a wallet" detail="Choose a Solana wallet in Reown, or scan its WalletConnect QR code. Approve the login message to sign in. No transfer or transaction is requested." />
                 <Step number="02" title="Create or import a managed wallet" detail="Open Wallets to prepare a wallet used by launch and trading tools." />
                 <Step number="03" title="Fund the managed wallet" detail="Transfer SOL using the existing wallet workflow. Confirm addresses and network before sending." />
                 <Step number="04" title="Configure monitoring" detail="Set filters and trade parameters in Monitor. Use its current status before starting the service." />

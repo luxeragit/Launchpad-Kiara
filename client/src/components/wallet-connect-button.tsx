@@ -18,7 +18,7 @@ export function WalletConnectButton({ compact = false }: { compact?: boolean }) 
 
   if (isLoading) {
     return (
-      <Button variant="outline" disabled data-testid="button-wallet-loading">
+      <Button variant="outline" disabled data-testid="button-wallet-loading" aria-label="Connecting wallet" aria-busy="true">
         <Loader2 className="w-4 h-4 animate-spin" />
       </Button>
     );
@@ -55,6 +55,7 @@ export function WalletConnectButton({ compact = false }: { compact?: boolean }) 
         onClick={() => connectWallet()}
         data-testid="button-connect-wallet"
         aria-label="Connect wallet"
+        title="Connect with Reown · Sign a message to log in, no transaction"
       >
         <Wallet className={`w-4 h-4 ${compact ? "sm:mr-2" : "mr-2"}`} />
         <span className={compact ? "hidden sm:inline" : undefined}>Connect Wallet</span>

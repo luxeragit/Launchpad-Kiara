@@ -41,3 +41,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_database:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+VITE_REOWN_PROJECT_ID = "895a46c05641456eb07ca616aecc3573"
